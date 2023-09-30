@@ -1,0 +1,2 @@
+?package(media-downloader):needs="X11" section="Video"\
+  title="media-downloader" command="/usr/bin/media-downloader"

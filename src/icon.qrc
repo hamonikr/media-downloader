@@ -1,0 +1,12 @@
+
+ <!DOCTYPE RCC>
+ <RCC version="1.0">
+	 <qresource>
+		 <file>media-downloader.png</file>
+		 <file>folder.jpeg</file>
+		 <file>file.png</file>
+		 <file>video.png</file>
+		 <file>executable.png</file>
+		 <file>json.jpeg</file>
+	 </qresource>
+ </RCC>

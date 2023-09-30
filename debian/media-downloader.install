@@ -1,0 +1,5 @@
+usr/bin/media-downloader
+usr/share/applications/media-downloader.desktop
+usr/share/pixmaps/media-downloader.png
+usr/share/media-downloader/translations/en_US.qm
+usr/share/media-downloader/translations/pl_PL.qm

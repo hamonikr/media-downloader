@@ -1,0 +1,16 @@
+Source: media-downloader
+Section: admin
+Priority: extra
+Maintainer: Mhogo Mchungu <mhogomchungu@gmail.com>
+Uploaders:
+Build-Depends: debhelper (>= 9), cmake, pkg-config, qtbase5-dev, chrpath, bzip2
+Standards-Version: 3.9.5
+Homepage: https://github.com/mhogomchungu/media-downloader
+Vcs-Git: git@github.com:mhogomchungu/media-downloader.git
+Vcs-Browser: https://github.com/mhogomchungu/media-downloader
+
+Package: media-downloader
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A Qt/C++ GUI front end to youtube-dl.
+
