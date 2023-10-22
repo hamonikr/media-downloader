@@ -26,6 +26,8 @@
 #include "settings.h"
 #include "translator.h"
 
+#include <csignal>
+
 static std::unique_ptr< Ui::MainWindow > _init_ui( QMainWindow& mw )
 {
 	auto m = std::make_unique< Ui::MainWindow >() ;
@@ -33,31 +35,24 @@ static std::unique_ptr< Ui::MainWindow > _init_ui( QMainWindow& mw )
 	return m ;
 }
 
-static QString _debug( const QStringList& e )
-{
-	if( e.contains( "--debug" ) ){
-
-		return "--debug" ;
-
-	}else if( e.contains( "--qdebug" ) ){
-
-		return "--qdebug" ;
-	}else{
-		return "" ;
-	}
-}
-
-MainWindow::MainWindow( QApplication& app,settings& s,translator& t,const QStringList& args ) :
+MainWindow::MainWindow( QApplication& app,
+			settings& s,
+			translator& t,
+			const engines::enginePaths& paths,
+			const utility::cliArguments& args ) :
 	m_trayIcon( QIcon::fromTheme( "media-downloader",QIcon( ":media-downloader" ) ) ),
 	m_qApp( app ),
 	m_appName( "Media Downloader" ),
 	m_ui( _init_ui( *this ) ),
 	m_logger( *m_ui->plainTextEditLogger,this,s ),
-	m_engines( m_logger,s,utility::sequentialID() ),
-	m_tabManager( s,t,m_engines,m_logger,*m_ui,*this,*this,m_appName,_debug( args ) ),
+	m_engines( m_logger,paths,s,utility::sequentialID() ),
+	m_printOutPut( args ),
+	m_tabManager( s,t,m_engines,m_logger,*m_ui,*this,*this,m_appName,m_printOutPut ),
 	m_settings( s ),
 	m_showTrayIcon( s.showTrayIcon() )
 {
+	MainWindow::setUpSignals( this ) ;
+
 	this->setTitle( m_appName ) ;
 
 	qRegisterMetaType< utility::networkReply >() ;
@@ -124,6 +119,8 @@ MainWindow::MainWindow( QApplication& app,settings& s,translator& t,const QStrin
 
 		m_trayIcon.show() ;
 	}
+
+	paths.confirmPaths( m_logger ) ;
 }
 
 void MainWindow::showTrayIcon( bool e )
@@ -163,7 +160,15 @@ void MainWindow::Show()
 	this->show() ;
 }
 
-void MainWindow::processEvent( const QByteArray& e )
+void MainWindow::processEvent( const QByteArray& m )
+{
+	auto a = "processEventSlot" ;
+	auto b = Qt::QueuedConnection ;
+
+	QMetaObject::invokeMethod( this,a,b,Q_ARG( QByteArray,m ) ) ;
+}
+
+void MainWindow::processEventSlot( const QByteArray& e )
 {
 	m_tabManager.gotEvent( e ) ;
 }
@@ -177,13 +182,26 @@ void MainWindow::quitApp()
 	QCoreApplication::quit() ;
 }
 
-void MainWindow::log( const QByteArray& e )
-{
-	m_logger.add( e,utility::sequentialID() ) ;
-}
-
 MainWindow::~MainWindow()
 {
+}
+
+MainWindow * MainWindow::m_mainWindow ;
+
+void MainWindow::setUpSignals( MainWindow * m )
+{
+	m_mainWindow = m ;
+	MainWindow::setUpSignal( SIGTERM,SIGSEGV,SIGINT,SIGABRT ) ;
+}
+
+void MainWindow::signalHandler( int )
+{
+	m_mainWindow->quitApp() ;
+}
+
+void MainWindow::setUpSignal( int sig )
+{
+	std::signal( sig,MainWindow::signalHandler ) ;
 }
 
 void MainWindow::closeEvent( QCloseEvent * e )

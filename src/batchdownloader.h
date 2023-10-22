@@ -199,7 +199,7 @@ public:
 	void tabEntered() ;
 	void tabExited() ;
 	void exiting() ;
-	void gotEvent( const QByteArray& ) ;
+	void gotEvent( const QJsonObject& ) ;
 	void updateEnginesList( const QStringList& ) ;
 	void setShowMetaData( bool ) ;
 	void showComments( const engines::engine&,const QString& ) ;
@@ -249,14 +249,12 @@ private:
 	bool m_showMetaData ;
 	tableWidget m_table ;
 	tableMiniWidget< QJsonObject > m_tableWidgetBDList ;
-	QString m_debug ;
 	QString m_commentsFileName ;
 	int m_networkRunning = false ;
 	QStringList m_optionsList ;
 	QLineEdit m_lineEdit ;
 	QPixmap m_defaultVideoThumbnail ;
 	batchdownloader::listType m_listType ;
-
 	utility::Terminator m_terminator ;
 
 	downloadManager m_ccmd ;
@@ -376,7 +374,7 @@ private:
 	struct opts
 	{
 		const Context& ctx ;
-		QString debug ;
+		utility::printOutPut& printOutPut ;
 		bool listRequested ;
 		int index ;
 		Logger batchLogger ;
@@ -385,7 +383,7 @@ private:
 	template< typename Logger,typename Functions >
 	auto make_options( const Context& ctx,
 			   const engines::engine& engine,
-			   QString debug,
+			   utility::printOutPut& debug,
 			   bool listRequested,
 			   int index,
 			   Logger logger,

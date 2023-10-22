@@ -1,4 +1,8 @@
-cmake_minimum_required(VERSION 3.0.2)
+if(${CMAKE_VERSION} VERSION_GREATER "3.26")
+    cmake_minimum_required(VERSION 3.5.0)
+else()
+    cmake_minimum_required(VERSION 3.0.2)
+endif()
 
 project(media-downloader LANGUAGES CXX)
 
@@ -10,7 +14,7 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-set( PGR_VERSION "3.3.0" )
+set( PGR_VERSION "3.4.0" )
 set( COPYRIGHT_YEARS "2021-2023" )
 
 INCLUDE(GNUInstallDirs)
@@ -67,6 +71,7 @@ set(SRC
     src/main.cpp
     src/settings.cpp
     src/utility.cpp
+    src/proxy.cpp
     src/basicdownloader.cpp
     src/about.cpp
     src/themes.cpp
@@ -104,7 +109,11 @@ else()
     set_target_properties(media-downloader PROPERTIES COMPILE_FLAGS "-Wextra -Wall -s -fPIC -pedantic")
 endif()
 
-target_link_libraries(media-downloader Qt5::Widgets Qt5::Core Qt5::Network)
+if(WIN32)
+	target_link_libraries(media-downloader Iphlpapi.lib Qt5::Widgets Qt5::Core Qt5::Network)
+else()
+	target_link_libraries(media-downloader Qt5::Widgets Qt5::Core Qt5::Network)
+endif()
 
 install(TARGETS media-downloader RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 

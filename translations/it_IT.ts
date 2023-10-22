@@ -307,6 +307,38 @@
         <source>Maximum Concurrent Downloads</source>
         <translation>Numero massimo download simultanei</translation>
     </message>
+    <message>
+        <source>Auto Hide Downloads When Completed</source>
+        <translation>Al termine nascondi automaticamente download</translation>
+    </message>
+    <message>
+        <source>Proxy Settings</source>
+        <translation>Impostazioni proxy</translation>
+    </message>
+    <message>
+        <source>Use System Proxy Configuration(Windows Only)</source>
+        <translation>Usa configurazione proxy di sistema (solo Windows)</translation>
+    </message>
+    <message>
+        <source>Use Manually Specified Proxy Configuration</source>
+        <translation>Usa configurazione proxy manuale</translation>
+    </message>
+    <message>
+        <source>Get Proxy Configuration From The Environment</source>
+        <translation>Ottieni la configurazione proxy dal sistema</translation>
+    </message>
+    <message>
+        <source>No Proxy</source>
+        <translation>Nessun proxy</translation>
+    </message>
+    <message>
+        <source>Manually Specified Proxy Configuration
+Example 1: 192.168.93.89:8080
+Exampe 2: ${gateway}:8080</source>
+        <translation>Configurazione manuale proxy
+Esempio 1: 192.168.93.89:8080
+Esempio 2: ${gateway}:8080</translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
@@ -483,10 +515,6 @@
         <translation>Impossibile analizzare il file json da github</translation>
     </message>
     <message>
-        <source>Download path: </source>
-        <translation>Cartella download: </translation>
-    </message>
-    <message>
         <source>Renaming file to: </source>
         <translation>Rinomina file in: </translation>
     </message>
@@ -501,10 +529,6 @@
     <message>
         <source>Resetting download folder to default</source>
         <translation>Ripristino valore rpedefinito cartella download</translation>
-    </message>
-    <message>
-        <source>Running in portable mode</source>
-        <translation>Esecuzione in modalità portatile</translation>
     </message>
     <message>
         <source>Failed to find python3 executable for backend &quot;%1&quot;</source>
@@ -771,6 +795,50 @@ Per maggiori dettagli vedi la GNU General Public License .</translation>
     <message>
         <source>Failed To Find &quot;tar&quot; Executable</source>
         <translation>Impossibile trovare l&apos;eseguibile &quot;tar&quot;</translation>
+    </message>
+    <message>
+        <source>Running In Portable Mode</source>
+        <translation>Esegui in modo portatile</translation>
+    </message>
+    <message>
+        <source>Running In Installation Mode</source>
+        <translation>Esegui in modo installazione</translation>
+    </message>
+    <message>
+        <source>Download Path: %1</source>
+        <translation>Percorso download: %1</translation>
+    </message>
+    <message>
+        <source>App Data Path: %1</source>
+        <translation>Percorso dati app: %1</translation>
+    </message>
+    <message>
+        <source>Failed To Open Path For Writing: %1</source>
+        <translation>Impossibile aprire il percorso in scrittura: %1</translation>
+    </message>
+    <message>
+        <source>Hide Row</source>
+        <translation>Nascondi riga</translation>
+    </message>
+    <message>
+        <source>Unhide All Hidden Rows</source>
+        <translation>Visualizza tutte le righe nascoste</translation>
+    </message>
+    <message>
+        <source>Setting Proxy Server Address Of %1</source>
+        <translation>Impostazione indirizzo server proxy a %1</translation>
+    </message>
+    <message>
+        <source>Unsetting Proxy Server Address</source>
+        <translation>Indirizzo proxy non impostato</translation>
+    </message>
+    <message>
+        <source>Download Failed, Engine failed to start</source>
+        <translation>Download non riuscito, impossibile avviare l&apos;engine</translation>
+    </message>
+    <message>
+        <source>Warning: Skipping Clipboard Content</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

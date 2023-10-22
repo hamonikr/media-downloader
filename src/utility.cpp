@@ -114,6 +114,15 @@ bool utility::platformIsWindows()
 
 #ifdef Q_OS_WIN
 
+#include <windows.h>
+#include <iphlpapi.h>
+#include <libloaderapi.h>
+#include <winuser.h>
+#include <winbase.h>
+
+#include <array>
+#include <cstring>
+
 bool utility::platformIsWindows()
 {
 	return true ;
@@ -134,9 +143,6 @@ bool utility::platformisOS2()
 	return false ;
 }
 
-#include <libloaderapi.h>
-#include <array>
-
 QString utility::windowsApplicationDirPath()
 {
 	std::array< char,4096 > buffer ;
@@ -154,9 +160,119 @@ QString utility::windowsApplicationDirPath()
 	return m ;
 }
 
+class adaptorInfo
+{
+public:
+	adaptorInfo()
+	{
+		auto m = this->requiredSize() ;
+
+		if( m ){
+
+			auto e = HeapAlloc( GetProcessHeap(),0,m ) ;
+
+			auto s = static_cast< PIP_ADAPTER_INFO >( e ) ;
+
+			if( GetAdaptersInfo( s,&m ) == NO_ERROR ){
+
+				m_handle = s ;
+			}else{
+				this->free( s ) ;
+			}
+		}
+	}
+	QString address()
+	{
+		if( m_handle ){
+
+			for( auto it = m_handle ; it != nullptr ; it = it->Next ){
+
+				auto gateway = it->GatewayList.IpAddress.String ;
+				auto address = it->IpAddressList.IpAddress.String ;
+
+				if( std::strcmp( address,"0.0.0.0" ) ){
+
+					if( std::strcmp( gateway,"0.0.0.0" ) ){
+
+						return gateway ;
+					}
+				}
+			}
+		}
+
+		return {} ;
+	}
+	~adaptorInfo()
+	{
+		this->free( m_handle ) ;
+	}
+private:
+	void free( PIP_ADAPTER_INFO s )
+	{
+		HeapFree( GetProcessHeap(),0,s ) ;
+	}
+	ULONG requiredSize()
+	{
+		ULONG m = 0 ;
+
+		if( GetAdaptersInfo( nullptr,&m ) == ERROR_BUFFER_OVERFLOW ){
+
+			return m ;
+		}else{
+			return 0 ;
+		}
+	}
+
+	PIP_ADAPTER_INFO m_handle = nullptr ;
+} ;
+
+QString utility::windowsGateWayAddress()
+{
+	return adaptorInfo().address() ;
+}
+
+QString utility::windowsGetClipBoardText( const Context& ctx )
+{
+	QString s ;
+
+	if( IsClipboardFormatAvailable( CF_TEXT ) ){
+
+		if( OpenClipboard( HWND( ctx.mainWidget().winId() ) ) ){
+
+			auto hglb = GetClipboardData( CF_TEXT ) ;
+
+			if( hglb ){
+
+				auto lptstr = static_cast< LPTSTR >( GlobalLock( hglb ) ) ;
+
+				if( lptstr ){
+
+					s = lptstr ;
+
+					GlobalUnlock( hglb ) ;
+				}
+			}
+
+			CloseClipboard() ;
+		}
+	}
+
+	return s ;
+}
+
 #else
 
+QString utility::windowsGetClipBoardText( const Context& )
+{
+	return {} ;
+}
+
 QString utility::windowsApplicationDirPath()
+{
+	return {} ;
+}
+
+QString utility::windowsGateWayAddress()
 {
 	return {} ;
 }
@@ -217,13 +333,15 @@ static void _kill_children_recursively( const QString& id )
 
 	auto filter = QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ;
 
-	for( const auto& it : QDir( path ).entryList( filter ) ){
+	const auto ff = QDir( path ).entryList( filter ) ;
+
+	for( const auto& it : ff ){
 
 		QFile file( path + it + "/children" ) ;
 
 		if( file.open( QIODevice::ReadOnly ) ){
 
-			auto pids = util::split( file.readAll(),' ',true ) ;
+			const auto pids = util::split( file.readAll(),' ',true ) ;
 
 			for( const auto& it : pids ){
 
@@ -449,7 +567,16 @@ QStringList utility::updateOptions( const updateOptionsStruct& s )
 	const utility::uiIndex& uiIndex       = s.uiIndex;
 	const utility::downLoadOptions& dopts = s.dopts ;
 
-	auto opts = [ & ](){
+	QStringList opts ;
+
+	const auto& p = s.ctx.Engines().networkProxy() ;
+
+	if( p.isSet() ){
+
+		engine.setProxySetting( opts,p.networkProxyString() ) ;
+	}
+
+	auto oopts = [ & ](){
 
 		if( dopts.hasExtraOptions ){
 
@@ -467,6 +594,8 @@ QStringList utility::updateOptions( const updateOptionsStruct& s )
 			}
 		}
 	}() ;
+
+	opts = opts + oopts ;
 
 	for( const auto& it : args.otherOptions() ){
 
@@ -776,7 +905,14 @@ utility::MediaEntry::MediaEntry( const QByteArray& data ) : m_json( data )
 			m_uploadDate = utility::stringConstants::uploadDate() + " " + m_uploadDate ;
 		}
 
-		m_intDuration = object.value( "duration" ).toInt() ;
+		auto duration = object.value( "duration" ) ;
+
+		if( duration.isDouble() ){
+
+			m_intDuration = static_cast< int >( duration.toDouble() ) ;
+		}else{
+			m_intDuration = duration.toInt() ;
+		}
 
 		if( m_intDuration != 0 ){
 
@@ -942,7 +1078,9 @@ utility::downLoadOptions utility::setDownloadOptions( const engines::engine& eng
 
 	if( !z.isEmpty() ){
 
-		for( const auto& it : util::split( z,',',true ) ){
+		const auto mm = util::split( z,',',true ) ;
+
+		for( const auto& it : mm  ){
 
 			m += " --download-sections \"" + it + "\"" ;
 		}
@@ -1012,17 +1150,75 @@ bool utility::onlyWantedVersionInfo( const utility::cliArguments& args )
 	}
 }
 
-bool utility::startedUpdatedVersion( settings& s,const utility::cliArguments& cargs )
+static util::version _get_process_version( const QString& path,
+					   const QString& cmd,
+					   const QProcessEnvironment& env )
 {
-	if( utility::platformIsNOTWindows() ){
+	auto e = path + "/version_info.txt" ;
 
-		return false ;
+	QFile file( e ) ;
+
+	if( file.exists() ){
+
+		if( file.open( QIODevice::ReadOnly ) ){
+
+			util::version m = file.readAll() ;
+
+			if( m.valid() ){
+
+				return m ;
+			}
+
+			file.close() ;
+		}
+
+		file.remove() ;
 	}
 
-	auto cpath = s.configPaths() ;
+	QProcess exe ;
 
-	auto m = cpath + "/update_new" ;
-	auto mm = cpath + "/update" ;
+	exe.setProgram( cmd ) ;
+	exe.setArguments( { "--version" } ) ;
+	exe.setProcessEnvironment( env ) ;
+
+	exe.start() ;
+
+	exe.waitForFinished() ;
+
+	util::version m = exe.readAllStandardOutput().trimmed() ;
+
+	if( m.valid() ){
+
+		QFile file( e ) ;
+
+		if( file.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
+
+			file.write( m.toString().toUtf8() ) ;
+		}
+	}
+
+	return m ;
+}
+
+static bool _start_updated( QProcess& exe )
+{
+#if QT_VERSION >= QT_VERSION_CHECK( 5,10,0 )
+	return exe.startDetached() ;
+#else
+	exe.start() ;
+	exe.waitForFinished( -1 ) ;
+	return true ;
+#endif
+}
+
+bool utility::startedUpdatedVersion( settings& s,const utility::cliArguments& cargs )
+{
+	const auto& cpath = s.configPaths() ;
+
+	auto ew = cpath.endsWith( "/" ) ;
+
+	const auto m  = ew ? cpath + "update_new" : cpath + "/update_new" ;
+	const auto mm = ew ? cpath + "update" : cpath + "/update" ;
 
 	if( QFile::exists( m ) ){
 
@@ -1036,32 +1232,37 @@ bool utility::startedUpdatedVersion( settings& s,const utility::cliArguments& ca
 
 	if( QFile::exists( exePath ) && !cargs.runningUpdated() ){
 
-		auto exeDirPath = utility::windowsApplicationDirPath() ;
-
-		auto args = cargs.arguments( cpath,exeDirPath,s.portableVersion() ) ;
-
 		auto env = QProcessEnvironment::systemEnvironment() ;
 
-		env.insert( "PATH",exeDirPath + ";" + env.value( "PATH" ) ) ;
+		auto exeDirPath = utility::windowsApplicationDirPath() ;
 
+		env.insert( "PATH",exeDirPath + ";" + env.value( "PATH" ) ) ;
 		env.insert( "QT_PLUGIN_PATH",exeDirPath ) ;
 
-		QProcess exe ;
+		util::version uv = _get_process_version( mm,exePath,env ) ;
 
-		exe.setProgram( exePath ) ;
-		exe.setArguments( args ) ;
-		exe.setProcessEnvironment( env ) ;
+		util::version cv = utility::runningVersionOfMediaDownloader() ;
 
-#if QT_VERSION >= QT_VERSION_CHECK( 5,10,0 )
-		return exe.startDetached() ;
-#else
-		exe.start() ;
-		exe.waitForFinished( -1 ) ;
-		return true ;
-#endif
-	}else{		
-		return false ;
+		if( uv.valid() ){
+
+			if( cv < uv ){
+
+				auto args = cargs.arguments( cpath,exeDirPath,s.portableVersion() ) ;
+
+				QProcess exe ;
+
+				exe.setProgram( exePath ) ;
+				exe.setArguments( args ) ;
+				exe.setProcessEnvironment( env ) ;
+
+				return _start_updated( exe ) ;
+			}else{
+				QDir( mm ).removeRecursively() ;
+			}
+		}
 	}
+
+	return false ;
 }
 
 bool utility::platformIsLikeWindows()
@@ -1069,9 +1270,69 @@ bool utility::platformIsLikeWindows()
 	return utility::platformIsWindows() || utility::platformisOS2() ;
 }
 
+class runTimeVersionInfo
+{
+public:
+	void setInstanceVersion( const QString& e )
+	{
+		m_instanceVersion = e ;
+	}
+	void setAboutInstanceVersion( const QString& e )
+	{
+		m_aboutInstanceVersion = e ;
+	}
+	const QString& instanceVersion() const
+	{
+		return m_instanceVersion ;
+	}
+	const QString& aboutInstanceVersion() const
+	{
+		return m_aboutInstanceVersion ;
+	}
+private:
+	QString m_instanceVersion ;
+	QString m_aboutInstanceVersion ;
+} ;
+
+static runTimeVersionInfo& _runTimeVersions()
+{
+	static runTimeVersionInfo m ;
+
+	return m ;
+}
+
+QString utility::aboutVersionInfo()
+{
+	const auto& e = _runTimeVersions().aboutInstanceVersion() ;
+
+	if( e.isEmpty() ){
+
+		return utility::runningVersionOfMediaDownloader() ;
+	}else{
+		return e ;
+	}
+}
+
 QString utility::runningVersionOfMediaDownloader()
 {
-	return VERSION ;
+	const auto& e = _runTimeVersions().instanceVersion() ;
+
+	if( e.isEmpty() ){
+
+		return VERSION ;
+	}else{
+		return e ;
+	}
+}
+
+void utility::setRunningVersionOfMediaDownloader( const QString& e )
+{
+	_runTimeVersions().setInstanceVersion( e ) ;
+}
+
+void utility::setHelpVersionOfMediaDownloader( const QString& e )
+{
+	_runTimeVersions().setAboutInstanceVersion( e ) ;
 }
 
 static QStringList _parseOptions( const QString& e,const engines::engine& engine )
@@ -1218,32 +1479,24 @@ void utility::networkReply::getData( const Context& ctx,const utils::network::re
 	}
 }
 
-static QString _logToFile ;
-
-utility::cliArguments::cliArguments( int argc,char ** argv ) :
-	m_argc( argc ),m_argv( argv )
+utility::cliArguments::cliArguments( int argc,char ** argv )
 {
-	_logToFile = this->value( "--log-to-file" ) ;
+	for( int i = 0 ; i < argc ; i++ ){
 
-	if( !_logToFile.isEmpty() ){
+		m_args.append( argv[ i ] ) ;
+	}
 
-		QFile f( _logToFile ) ;
-		f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ;
-		f.write( "" ) ;
+	if( this->runningUpdated() ){
+
+		utility::setRunningVersionOfMediaDownloader( this->value( "--fake-updated-version" ) ) ;
+	}else{
+		utility::setRunningVersionOfMediaDownloader( this->value( "--fake-version" ) ) ;
 	}
 }
 
 bool utility::cliArguments::contains( const char * m ) const
 {
-	for( int i = 0 ; i < m_argc ; i++ ){
-
-		if( std::strcmp( m_argv[ i ],m ) == 0 ){
-
-			return true ;
-		}
-	}
-
-	return false ;
+	return m_args.contains( m ) ;
 }
 
 bool utility::cliArguments::runningUpdated() const
@@ -1273,13 +1526,15 @@ QString utility::cliArguments::originalVersion() const
 
 QString utility::cliArguments::value( const char * m ) const
 {
-	for( int i = 0 ; i < m_argc ; i++ ){
+	for( auto it = m_args.begin() ; it != m_args.end() ; it++ ){
 
-		if( std::strcmp( m_argv[ i ],m ) == 0 ){
+		if( *it == m ){
 
-			if( i + 1 < m_argc ){
+			auto xt = it + 1 ;
 
-				return m_argv[ i + 1 ] ;
+			if( xt != m_args.end() ){
+
+				return *xt ;
 			}
 		}
 	}
@@ -1291,12 +1546,7 @@ QStringList utility::cliArguments::arguments( const QString& cpath,
 					      const QString& exeDirPath,
 					      bool portableVersion ) const
 {
-	QStringList args ;
-
-	for( int i = 0 ; i < m_argc ; i++ ){
-
-		args.append( m_argv[ i ] ) ;
-	}
+	auto args = m_args ;
 
 	args.append( "--running-updated" ) ;
 
@@ -1319,15 +1569,188 @@ QStringList utility::cliArguments::arguments( const QString& cpath,
 	return args ;
 }
 
-void utility::log( const QByteArray& data,const QString& e )
+const QStringList& utility::cliArguments::arguments() const
 {
-	utility::debug( e ) << data ;
-	utility::debug( e ) << "-------------------------------" ;
+	return m_args ;
+}
 
-	if( !_logToFile.isEmpty() ){
+#ifdef Q_OS_WIN
 
-		QFile f( _logToFile ) ;
-		f.open( QIODevice::WriteOnly | QIODevice::Append ) ;
-		f.write( data ) ;
+extern Q_CORE_EXPORT int qt_ntfs_permission_lookup;
+
+void utility::ntfsEnablePermissionChecking( bool e )
+{
+	if( e ){
+
+		qt_ntfs_permission_lookup++ ;
+	}else{
+		qt_ntfs_permission_lookup-- ;
 	}
+}
+
+#else
+
+void utility::ntfsEnablePermissionChecking( bool )
+{
+}
+
+#endif
+
+bool utility::pathIsFolderAndExists( const QString& e )
+{
+	QFileInfo m( e ) ;
+
+	return m.exists() && m.isDir() ;
+}
+
+QByteArray utility::barLine()
+{
+	return "*************************************************************" ;
+}
+
+utility::printOutPut::printOutPut( const utility::cliArguments& args )
+{
+	if( args.contains( "--qDebug" ) || args.contains( "--qdebug" ) ){
+
+		m_status = utility::printOutPut::status::qdebug ;
+
+	}else if( args.contains( "--debug" ) ){
+
+		m_status = utility::printOutPut::status::debug ;
+	}else{
+		auto m = args.value( "--log-to-file" ) ;
+
+		if( !m.isEmpty() ){
+
+			m_outPutFile.setFileName( m ) ;
+
+			m_outPutFile.open( QIODevice::WriteOnly | QIODevice::Append ) ;
+		}
+	}
+}
+
+void utility::printOutPut::operator()( const QByteArray& e )
+{
+	if( m_status != utility::printOutPut::status::notSet ){
+
+		if( m_outPutFile.isOpen() ){
+
+			m_outPutFile.write( e ) ;
+		}
+
+		if( m_status == utility::printOutPut::status::qdebug ){
+
+			qDebug() << e ;
+			qDebug() << "--------------------------------" ;
+
+		}else if( m_status == utility::printOutPut::status::debug ){
+
+			std::cout << e.constData() << std::endl ;
+			std::cout << "--------------------------------" << std::endl ;
+		}
+	}
+}
+
+utility::printOutPut::operator bool() const
+{
+	return m_status != utility::printOutPut::status::notSet ;
+}
+
+void utility::failedToParseJsonData( Logger& logger,const QJsonParseError& error )
+{
+	auto id = utility::sequentialID() ;
+
+	logger.add( "Failed To Parse Json Data:" + error.errorString(),id ) ;
+}
+
+void utility::hideUnhideEntries( QMenu& m,tableWidget& table,int row,bool showHide )
+{
+	if( showHide ){
+
+		auto ac = m.addAction( QObject::tr( "Hide Row" ) ) ;
+
+		QObject::connect( ac,&QAction::triggered,[ &table,row ](){
+
+			table.hideRow( row ) ;
+		} ) ;
+	}
+
+	if( table.containsHiddenRows() ){
+
+		auto ac = m.addAction( QObject::tr( "Unhide All Hidden Rows" ) ) ;
+
+		QObject::connect( ac,&QAction::triggered,[ &table ](){
+
+			auto& t = table.get() ;
+
+			for( int row = 0 ; row < table.rowCount() ; row++ ){
+
+				if( t.isRowHidden( row ) ){
+
+					t.showRow( row ) ;
+				}
+			}
+		} ) ;
+	}
+}
+
+static QStringList _listOptionsFromDownloadOptions( const QString& e )
+{
+	QStringList m ;
+
+	auto ee = util::splitPreserveQuotes( e ) ;
+
+	for( auto it = ee.begin() ; it != ee.end() ; it++ ){
+
+		const auto& s = *it ;
+
+		if( s == "\"--proxy\"" || s == "--proxy" ){
+
+			auto xt = it + 1 ;
+
+			if( xt != ee.end() ){
+
+				m.append( "--proxy" ) ;
+				m.append( *xt ) ;
+			}
+
+			break ;
+		}
+	}
+
+	return m ;
+}
+
+void utility::addToListOptionsFromsDownload( QStringList& args,
+					     const QString& downLoadOptions,
+					     const Context& ctx,
+					     const engines::engine& engine )
+{
+	auto m = ctx.TabManager().Configure().engineDefaultDownloadOptions( engine.name() ) ;
+
+	auto ee = _listOptionsFromDownloadOptions( m ) ;
+
+	const auto& mm = ctx.Engines().networkProxy() ;
+
+	if( mm.isSet() ){
+
+		engine.setProxySetting( args,mm.networkProxyString() ) ;
+	}
+
+	if( !ee.isEmpty() ){
+
+		args = args + ee ;
+	}
+
+	auto ss = args + _listOptionsFromDownloadOptions( downLoadOptions ) ;
+
+	for( int i = ss.size() - 2 ; i > -1 ; i-- ){
+
+		if( ss[ i ] == "--proxy" ){
+
+			return mm.setApplicationProxy( ss[ i + 1 ] ) ;
+		}
+	}
+
+	mm.setDefaultProxy() ;
 }

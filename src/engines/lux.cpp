@@ -73,6 +73,31 @@ Merging video parts into TRIPLE PLAY‼ Braves capitalize on shoddy baserunning 
 )R" ;
 }
 
+static void _replaceChars( QByteArray& )
+{
+}
+template< typename ... T >
+static void _replaceChars( QByteArray& e,const char * a,const char * b,T&& ... t )
+{
+	e.replace( a,b ) ;
+	_replaceChars( e,std::forward< T >( t ) ... ) ;
+}
+
+static QByteArray _title( QByteArray title )
+{
+	// Got these substitions from lux source code
+	// https://github.com/iawia002/lux/blob/c97baa8c5325c48618a6e0b243f3e614e7980f43/utils/utils.go#L89
+
+	_replaceChars( title,"\n"," ","/"," ","|","-",": ","：",":","：","'","’" ) ;
+
+	if( utility::platformIsWindows() ){
+
+		_replaceChars( title,"\""," ","?"," ","*"," ","\\"," ","<"," ",">"," " ) ;
+	}
+
+	return title ;
+}
+
 lux::~lux()
 {
 }
@@ -89,7 +114,7 @@ engines::engine::functions::DataFilter lux::Filter( int id )
 	return { util::types::type_identity< lux::lux_dlFilter >(),m_engine,id,m_downloadFolder.toUtf8() } ;
 }
 
-std::vector<engines::engine::functions::mediaInfo> lux::mediaProperties( const QByteArray& e )
+std::vector<engines::engine::functions::mediaInfo> lux::mediaProperties( Logger& l,const QByteArray& e )
 {
 	QJsonParseError err ;
 
@@ -97,13 +122,15 @@ std::vector<engines::engine::functions::mediaInfo> lux::mediaProperties( const Q
 
 	if( err.error == QJsonParseError::NoError ){
 
-		return this->mediaProperties( json.array() ) ;
+		return this->mediaProperties( l,json.array() ) ;
 	}else{
+		utility::failedToParseJsonData( l,err ) ;
+
 		return {} ;
 	}
 }
 
-std::vector<engines::engine::functions::mediaInfo> lux::mediaProperties( const QJsonArray& arr )
+std::vector<engines::engine::functions::mediaInfo> lux::mediaProperties( Logger&,const QJsonArray& arr )
 {
 	std::vector<engines::engine::functions::mediaInfo> ent ;
 
@@ -224,59 +251,186 @@ static bool _meetLocalCondition( const engines::engine&,const QByteArray& e )
 	return e.contains( ", ETA: " ) ;
 }
 
+class LuxHeader
+{
+public:
+	static const char * marker()
+	{
+		return "..." ;
+	}
+	LuxHeader( const Logger::locale& locale,const QByteArray& allData,int m )
+	{
+		this->parse( locale,allData,m ) ;
+	}
+	LuxHeader( const Logger::locale& locale,const QByteArray& allData )
+	{
+		this->parse( locale,allData,allData.indexOf( LuxHeader::marker() ) ) ;
+	}
+	const QByteArray& title() const
+	{
+		return m_title ;
+	}
+	const QByteArray& fileSize() const
+	{
+		return m_fileSizeString ;
+	}
+	qint64 fileSizeInt() const
+	{
+		return m_fileSizeInt ;
+	}
+private:
+	void parse( const Logger::locale& locale,const QByteArray& allData,int m )
+	{
+		auto data = allData.mid( 0,m ) ;
+
+		m_title = this->getEntry( "Title:","Type:",data ) ;
+
+		auto size = this->getEntry( "Size:","#",data ) ;
+
+		if( !size.isEmpty() ){
+
+			auto s = util::split( size,' ' ) ;
+
+			if( s.size() > 2 ){
+
+				auto e = s[ s.size() - 2 ].mid( 1 ) ;
+
+				m_fileSizeInt    = e.toLongLong() ;
+				m_fileSizeString = locale.formattedDataSize( m_fileSizeInt ).toUtf8() ;
+			}
+		}
+	}
+	QByteArray getEntry( const QByteArray& start,const QByteArray& end,const QByteArray& s ) const
+	{
+		auto m = s.indexOf( end ) ;
+
+		if( m != -1 ){
+
+			auto mm = s.mid( 0,m ) ;
+
+			m = mm.indexOf( start ) ;
+
+			if( m != -1 ){
+
+				mm = mm.mid( m + start.size() ) ;
+
+				return mm.trimmed() ;
+			}
+		}
+
+		return {} ;
+	}
+	QByteArray m_title ;
+	QByteArray m_fileSizeString ;
+	qint64 m_fileSizeInt = 0 ;
+};
+
+using Output = engines::engine::functions::filterOutPut ;
+
 class luxFilter : public engines::engine::functions::filterOutPut
 {
 public:
 	luxFilter( const engines::engine& engine ) : m_engine( engine )
 	{
 	}
-	engines::engine::functions::filterOutPut::result
-	formatOutput( const engines::engine::functions::filterOutPut::args& args ) const override
+	Output::result formatOutput( const Output::args& args ) const override
+	{
+		auto data = args.data.toLine() + args.outPut ;
+
+		auto m = data.indexOf( LuxHeader::marker() ) ;
+
+		if( m != -1 ){
+
+			return this->formatOutput( args,data,m ) ;
+		}else{
+			return { args.outPut,m_engine,_meetLocalCondition } ;
+		}
+	}
+	Output::result formatOutput( int mm,
+				     int m,
+				     const QByteArray& ss,
+				     const QString& pgr,
+				     const Output::args& args,
+				     const QByteArray& allData ) const
 	{
 		const auto& locale = args.locale ;
-		const auto& outPut = args.data ;
 		const auto& e      = args.outPut ;
 
-		const auto& luxHeader = outPut.luxHeader() ;
+		auto a = util::split( ss.mid( 0,mm + 1 ),' ' ) ;
 
-		const auto& m = luxHeader.allData() ;
+		if( a.size() == 4 ){
 
-		auto mm = m.lastIndexOf( "-]" ) ;
+			LuxHeader luxHeader( args.locale,allData,m ) ;
 
-		if( mm == -1 ){
-
-			mm = m.lastIndexOf( "=]" ) ;
-		}
-
-		if( mm == - 1 ){
-
-			return { e,m_engine,_meetLocalCondition } ;
-		}
-
-		auto a = util::split( m.mid( mm + 2 ),' ' ) ;
-
-		QString pgr = "%1 / %2 (%3) at %4, ETA: %5" ;
-
-		if( a.size() > 4 ){
+			auto eta = a[ 3 ] ;
 
 			auto speed = a[ 0 ] + " " + a[ 1 ] + "/s" ;
 
-			auto perc = a[ 3 ] ;
-
-			auto ee = perc ;
-			ee.replace( "%","" ) ;
-
-			auto percentage = ee.toDouble() / 100 ;
+			auto perc = a[ 2 ] ;
 
 			auto totalSize = luxHeader.fileSizeInt() ;
 
-			auto sizeString = locale.formattedDataSize( totalSize * percentage ) ;
+			if( totalSize == 0 ){
 
-			m_tmp = pgr.arg( sizeString,luxHeader.fileSize(),perc,speed,a[ 4 ] ).toUtf8() ;
+				m_tmp = pgr.arg( "?","?",perc,speed,eta ).toUtf8() ;
+			}else{
+				auto ee = QString( perc ).replace( "%","" ) ;
+
+				auto percentage = ee.toDouble() / 100 ;
+
+				auto sizeString = locale.formattedDataSize( totalSize * percentage ) ;
+
+				auto fs = luxHeader.fileSize() ;
+
+				m_tmp = pgr.arg( sizeString,fs,perc,speed,eta ).toUtf8() ;
+			}
+
+			mm = e.indexOf( "Merging video parts into " ) ;
+
+			if( mm != -1 ){
+
+				m_tmp = m_tmp + "\n" + e.mid( mm ) ;
+			}
 
 			return { m_tmp,m_engine,_meetLocalCondition } ;
+		}else{
+			QString s = "?" ;
 
-		}else if( a.size() == 4 ){
+			m_tmp = pgr.arg( s,s,s,s,s ).toUtf8() ;
+
+			return { m_tmp,m_engine,_meetLocalCondition } ;
+		}
+	}
+	Output::result formatOutput( const Output::args& args,const QByteArray& allData,int m ) const
+	{
+		auto mm = allData.lastIndexOf( "-]" ) ;
+
+		if( mm == -1 ){
+
+			mm = allData.lastIndexOf( "=]" ) ;
+		}
+
+		if( mm == -1 ){
+
+			mm = allData.lastIndexOf( ">]" ) ;
+		}
+
+		if( mm == -1 ){
+
+			return { args.outPut,m_engine,_meetLocalCondition } ;
+		}
+
+		auto ss = allData.mid( mm + 2 ).replace( "p/s","" ) ;
+
+		mm = ss.indexOf( 's' ) ;
+
+		QString pgr = "%1 / %2 (%3) at %4, ETA: %5" ;
+
+		if( mm != -1 ){
+
+			return this->formatOutput( mm,m,ss,pgr,args,allData ) ;
+
+		}else if( ss.startsWith( " ? " ) ){
 
 			QString s = "?" ;
 
@@ -284,66 +438,16 @@ public:
 
 			return { m_tmp,m_engine,_meetLocalCondition } ;
 		}else{
-			return { e,m_engine,_meetLocalCondition } ;
+			return { args.outPut,m_engine,_meetLocalCondition } ;
 		}
 	}
 	bool meetCondition( const engines::engine::functions::filterOutPut::args& args ) const override
 	{
-		const auto& e = args.outPut ;
-		auto& outPut  = args.data ;
-
-		outPut.luxHeaderUpdateData( e ) ;
-
-		auto& luxHeader = outPut.luxHeader() ;
-
-		if( luxHeader.invalid() && luxHeader.allData().contains( "..." ) ){
-
-			this->setHeader( args ) ;
-		}
-
-		return _meetCondition( m_engine,e ) ;
+		return _meetCondition( m_engine,args.outPut ) ;
 	}
 	const engines::engine& engine() const override
 	{
 		return m_engine ;
-	}
-	void setHeader( const engines::engine::functions::filterOutPut::args& args ) const
-	{
-		auto& outPut       = args.data ;
-		const auto& locale = args.locale ;
-
-		QByteArray webSite ;
-		QByteArray title ;
-		QByteArray fsizeS ;
-		qint64 fsize = 0 ;
-
-		for( const auto& it : outPut.toStringList() ){
-
-			const QByteArray& e = it ;
-
-			if( e.contains( "Site: " ) ){
-
-				webSite = util::join( util::split( e,' ' ),1," " ) ;
-
-			}else if( e.contains( "Title: " ) ){
-
-				title = util::join( util::split( e,' ' ),1," " ) ;
-
-			}else if( e.contains( "Size: " ) ){
-
-				auto mm = util::split( e,' ' ) ;
-
-				if( mm.size() > 1 ){
-
-					auto ss = mm[ mm.size() - 2 ].mid( 1 ) ;
-
-					fsize = ss.toLongLong() ;
-					fsizeS = locale.formattedDataSize( fsize ).toUtf8() ;
-				}
-			}
-		}
-
-		outPut.setLuxHeader( { webSite,title,fsizeS,fsize } ) ;
 	}
 private:
 	const engines::engine& m_engine ;
@@ -398,101 +502,12 @@ lux::lux_dlFilter::lux_dlFilter( const engines::engine& engine,int id,QByteArray
 
 const QByteArray& lux::lux_dlFilter::operator()( const Logger::Data& e )
 {	
-	const auto& luxHeader = e.luxHeader() ;
+	auto allData = e.toLines() ;
 
 	if( e.doneDownloading() ){
 
-		const auto& allData = luxHeader.allData() ;
-
-		if( allData.contains( ": file already exists, skipping" ) ){
-
-			const auto s = util::split( allData,'\n' ) ;
-
-			for( const auto& ss : s ){
-
-				auto m = ss.indexOf( ": file already exists, skipping" ) ;
-
-				if( m != -1 ){
-
-					m_tmp = ss.mid( 0,m ) ;
-
-					return m_tmp ;
-				}
-			}
-
-		}else if( allData.contains( "status: ERROR, reason:" ) ){
-
-			auto m = allData.indexOf( "status: ERROR, reason:" ) ;
-
-			m_tmp = allData.mid( m + 22 ) ;
-
-			return m_tmp ;
-
-		}else if( allData.contains( "invalid URI for request" ) ){
-
-			m_tmp = "invalid URI for request" ;
-			return m_tmp ;
-
-		}else if( allData.contains( "connect: cannot assign requested address" ) ){
-
-			m_tmp = "connect: cannot assign requested address" ;
-			return m_tmp ;
-
-		}else if( allData.contains( "no stream named " ) ){
-
-			m_tmp = "no stream named " ;
-			return m_tmp ;
-		}else{
-			auto m = allData.indexOf( "Merging video parts into " ) ;
-
-			if( m != -1 ){
-
-				m_fileName = allData.mid( m + 25 ) ;
-
-				m = m_fileName.indexOf( "[media-downloader]" ) ;
-
-				if( m != -1 ){
-
-					m_fileName = m_fileName.mid( 0,m ) ;
-				}
-
-				return m_fileName ;
-			}
-		}
-
-		if( m_fileName.isEmpty() ){
-
-			if( luxHeader.title().isEmpty() ){
-
-				//???
-				m_tmp.clear() ;
-
-				return m_tmp ;
-			}else{
-				const auto& m = luxHeader.title() ;
-
-				if( QFile::exists( m_downloadFolder + m + ".webm" ) ){
-
-					m_fileName = m + ".webm" ;
-
-					return m_fileName ;
-
-				}else if( QFile::exists( m_downloadFolder + m + ".mp4" ) ){
-
-					m_fileName = m + ".mp4" ;
-
-					return m_fileName ;
-				}else{
-					return m ;
-				}
-			}
-		}else{
-			return m_fileName ;
-		}
-	}
-
-	if( luxHeader.title().isEmpty() ){
-
+		return this->doneDownloading( allData ) ;
+	}else{
 		const auto& s = e.lastText() ;
 
 		if( s.startsWith( "Elapsed Time:" ) ){
@@ -501,18 +516,27 @@ const QByteArray& lux::lux_dlFilter::operator()( const Logger::Data& e )
 
 			return m_tmp ;
 		}else{
-			return m_banner ;
+			if( m_title.isEmpty() ){
+
+				m_title = LuxHeader( m_locale,allData ).title() ;
+
+				if( m_title.isEmpty() ){
+
+					return m_banner ;
+				}
+			}
+
+			if( e.lastLineIsProgressLine() ){
+
+				m_tmp = m_title + "\n" + e.lastText() ;
+
+				return m_tmp ;
+			}else{
+				m_tmp = m_title + "\n" + m_progress.text() ;
+
+				return m_tmp ;
+			}
 		}
-
-	}else if( e.lastLineIsProgressLine() ){
-
-		m_tmp = luxHeader.title() + "\n" + e.lastText() ;
-
-		return m_tmp ;
-	}else{
-		m_tmp = luxHeader.title() + "\n" + m_progress.text() ;
-
-		return m_tmp ;
 	}
 }
 
@@ -520,109 +544,92 @@ lux::lux_dlFilter::~lux_dlFilter()
 {
 }
 
-static void _replaceChars( QByteArray& )
+const QByteArray& lux::lux_dlFilter::doneDownloading( const QByteArray& allData )
 {
-}
-template< typename ... T >
-static void _replaceChars( QByteArray& e,const char * a,const char * b,T&& ... t )
-{
-	e.replace( a,b ) ;
-	_replaceChars( e,std::forward< T >( t ) ... ) ;
-}
+	if( allData.contains( ": file already exists, skipping" ) ){
 
-static QByteArray _title( QByteArray title )
-{
-	// Got these substitions from lux source code
-	// https://github.com/iawia002/lux/blob/c97baa8c5325c48618a6e0b243f3e614e7980f43/utils/utils.go#L89
+		const auto s = util::split( allData,'\n' ) ;
 
-	_replaceChars( title,"\n"," ","/"," ","|","-",": ","：",":","：","'","’" ) ;
+		for( const auto& ss : s ){
 
-	if( utility::platformIsWindows() ){
+			auto m = ss.indexOf( ": file already exists, skipping" ) ;
 
-		_replaceChars( title,"\""," ","?"," ","*"," ","\\"," ","<"," ",">"," " ) ;
+			if( m != -1 ){
+
+				m_tmp = ss.mid( 0,m ) ;
+
+				return m_tmp ;
+			}
+		}
+
+	}else if( allData.contains( "status: ERROR, reason:" ) ){
+
+		auto m = allData.indexOf( "status: ERROR, reason:" ) ;
+
+		m_tmp = allData.mid( m + 22 ) ;
+
+		return m_tmp ;
+
+	}else if( allData.contains( "invalid URI for request" ) ){
+
+		m_tmp = "invalid URI for request" ;
+		return m_tmp ;
+
+	}else if( allData.contains( "connect: cannot assign requested address" ) ){
+
+		m_tmp = "connect: cannot assign requested address" ;
+		return m_tmp ;
+
+	}else if( allData.contains( "no stream named " ) ){
+
+		m_tmp = "no stream named " ;
+		return m_tmp ;
+	}else{
+		auto m = allData.indexOf( "Merging video parts into " ) ;
+
+		if( m != -1 ){
+
+			m_fileName = allData.mid( m + 25 ) ;
+
+			m = m_fileName.indexOf( "[media-downloader]" ) ;
+
+			if( m != -1 ){
+
+				m_fileName = m_fileName.mid( 0,m ) ;
+			}
+
+			return m_fileName ;
+		}
 	}
 
-	return title ;
-}
-
-const QByteArray& lux::lux_dlFilter::renameTitle( const QByteArray& title )
-{
 	if( m_fileName.isEmpty() ){
 
-		/*
-		 * We will get here is no merging took place and hence we have no
-		 * file name.
-		 */
+		if( m_title.isEmpty() ){
 
-		auto fileName = [ this,&title ](){
+			//???
+			m_tmp.clear() ;
 
-			auto m = util::splitPreserveQuotes( m_cmd ) ;
-
-			for( int i = 0 ; i < m.size() ; i++ ){
-
-				if( m[ i ] == "-O" ){
-
-					if( i + 1 < m.size() ){
-
-						return m[ i + 1 ].toUtf8() ;
-					}
-				}
-			}
-
-			return _title( title ) ;
-		}() ;
-
-		if( QFile::exists( m_downloadFolder + fileName + ".webm" ) ){
-
-			m_fileName = fileName + ".webm" ;
-
-		}else if( QFile::exists( m_downloadFolder + fileName + ".mp4" ) ){
-
-			m_fileName = fileName + ".mp4" ;
+			return m_tmp ;
 		}else{
-			m_fileName = fileName ;
-		}
-	}
+			const auto& m = _title( m_title ) ;
 
-	if( m_fileName.contains( "%(title)s" ) ){
+			if( QFile::exists( m_downloadFolder + m + ".webm" ) ){
 
-		auto originalFileName = m_downloadFolder + m_fileName ;
-		auto newFileName = originalFileName ;
+				m_fileName = m + ".webm" ;
 
-		newFileName.replace( "%(title)s",_title( title ) ) ;
+				return m_fileName ;
 
-		if( QFile::exists( newFileName ) ){
+			}else if( QFile::exists( m_downloadFolder + m + ".mp4" ) ){
 
-			auto a = newFileName.lastIndexOf( '.' ) ;
+				m_fileName = m + ".mp4" ;
 
-			if( a != -1 ){
-
-				auto fn = newFileName.mid( 0,a - 1 ) + "-1" ;
-				auto ext = newFileName.mid( a ) ;
-
-				newFileName = fn + ext ;
+				return m_fileName ;
+			}else{
+				m_tmp = m ;
+				return m_tmp ;
 			}
 		}
-
-		m_fileName = newFileName.mid( m_downloadFolder.size() ) ;
-
-		utils::qthread::run( [ originalFileName,newFileName ](){
-
-			QThread::currentThread()->msleep( 500 ) ;
-
-			for( int i = 0 ; i < 4 ; i++ ){
-
-				if( QFile::rename( originalFileName,newFileName ) ){
-
-					break ;
-				}else{
-					QThread::currentThread()->msleep( 500 ) ;
-				}
-			}
-		} ) ;
+	}else{
+		return m_fileName ;
 	}
-
-	m_tmp = m_fileName ;
-
-	return m_tmp ;
 }

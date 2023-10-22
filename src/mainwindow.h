@@ -43,7 +43,7 @@ class MainWindow : public QMainWindow
 {
 	Q_OBJECT
 public:
-	MainWindow( QApplication&,settings&,translator&,const QStringList& ) ;
+	MainWindow( QApplication&,settings&,translator&,const engines::enginePaths&,const utility::cliArguments& ) ;
 	void retranslateUi() ;
 	void setTitle( const QString& m ) ;
 	void resetTitle() ;
@@ -51,17 +51,29 @@ public:
 	void processEvent( const QByteArray& e ) ;
 	void quitApp() ;
 	void showTrayIcon( bool ) ;
-	void log( const QByteArray& ) ;
 	~MainWindow() override ;
-private:
+private slots:
+	void processEventSlot( const QByteArray& ) ;
+private:	
+	static void signalHandler( int ) ;
+	static void setUpSignal( int ) ;
+	template< typename Int,typename ... INTS >
+	static void setUpSignal( Int sig,INTS ... sigs )
+	{
+		MainWindow::setUpSignal( sig ) ;
+		MainWindow::setUpSignal( sigs ... ) ;
+	}
+	static void setUpSignals( MainWindow * ) ;
 	QSystemTrayIcon m_trayIcon ;
 	QApplication& m_qApp ;
 	QString m_appName ;
 	std::unique_ptr< Ui::MainWindow > m_ui ;
 	Logger m_logger ;
 	engines m_engines ;
+	utility::printOutPut m_printOutPut ;
 	tabManager m_tabManager ;
 	settings& m_settings ;
+	static MainWindow * m_mainWindow ;
 	bool m_showTrayIcon ;
 	void closeEvent( QCloseEvent * ) override ;
 };

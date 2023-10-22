@@ -29,7 +29,11 @@
 #include "library.h"
 #include "networkAccess.h"
 
-class tabManager
+#include <QClipboard>
+
+Q_DECLARE_METATYPE( QClipboard::Mode )
+
+class tabManager : public QObject
 {
 public:
 	tabManager( settings& s,
@@ -40,7 +44,7 @@ public:
 		    QWidget& w,
 		    MainWindow& mw,
 		    const QString& appName,
-		    QString debug ) ;
+		    utility::printOutPut& ) ;
 	void setDefaultEngines() ;
 	tabManager& gotEvent( const QByteArray& e ) ;
 	tabManager& enableAll() ;
@@ -69,7 +73,13 @@ public:
 		return m_uiEnabled ;
 	}
 	void init_done() ;
+	void setProxy( const settings::proxySettings&,const settings::proxySettings::type& ) ;
 private:
+	void clipboardEvent( QClipboard::Mode ) ;
+	void mainThreadClipboardHandler() ;
+	void bgThreadClipboardHandler() ;
+	QClipboard * m_clipboard ;
+	bool m_firstTime = true ;
 	int m_currentTab ;
 	bool m_uiEnabled = true ;
 	Context m_ctx ;

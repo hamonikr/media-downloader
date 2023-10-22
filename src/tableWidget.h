@@ -254,9 +254,11 @@ public:
 	void selectLast() ;
 	void setEnabled( bool ) ;
 	void removeRow( int ) ;
+	void hideRow( int ) ;
 	bool isSelected( int ) ;
 	bool noneAreRunning() ;
-
+	bool rowIsVisible( int ) ;
+	bool containsHiddenRows() ;
 	bool allFinishedWithSuccess() ;
 
 	tableWidget( QTableWidget& t,const QFont& font,int init,int textAlignment ) ;

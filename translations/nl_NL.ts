@@ -307,6 +307,36 @@
         <source>Maximum Concurrent Downloads</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Auto Hide Downloads When Completed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Proxy Settings</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use System Proxy Configuration(Windows Only)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Use Manually Specified Proxy Configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Get Proxy Configuration From The Environment</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Proxy</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Manually Specified Proxy Configuration
+Example 1: 192.168.93.89:8080
+Exampe 2: ${gateway}:8080</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
@@ -463,20 +493,12 @@
         <translation>Kan het json-bestand van github niet ontleden</translation>
     </message>
     <message>
-        <source>Download path: </source>
-        <translation>Download pad: </translation>
-    </message>
-    <message>
         <source>Renaming file to: </source>
         <translation>Hernoem bestand naar: </translation>
     </message>
     <message>
         <source>Turkish (Turkey)</source>
         <translation>Turks(Turkije)</translation>
-    </message>
-    <message>
-        <source>Running in portable mode</source>
-        <translation>Draaien in draagbare modus</translation>
     </message>
     <message>
         <source>Elapsed Time:</source>
@@ -768,6 +790,50 @@
     </message>
     <message>
         <source>Failed To Find &quot;tar&quot; Executable</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Running In Portable Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Running In Installation Mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Download Path: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>App Data Path: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed To Open Path For Writing: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Hide Row</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unhide All Hidden Rows</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Setting Proxy Server Address Of %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Unsetting Proxy Server Address</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Download Failed, Engine failed to start</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Warning: Skipping Clipboard Content</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

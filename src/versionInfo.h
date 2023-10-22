@@ -207,7 +207,7 @@ public:
 		{
 			return m_iter.hasNext() ;
 		}
-		extensionVersionInfo next() const
+		extensionVersionInfo next()
 		{
 			auto m = this->move() ;
 
@@ -215,9 +215,9 @@ public:
 
 			return m ;
 		}
-		extensionVersionInfo move() const
+		extensionVersionInfo move()
 		{
-			return std::move( const_cast< versionInfo::extensionVersionInfo& >( *this ) ) ;
+			return std::move( *this ) ;
 		}
 		template< typename Function >
 		void report( Function function ) const
@@ -287,7 +287,8 @@ private:
 	class pVInfo
 	{
 	public:
-		pVInfo( versionInfo::printVinfo v,int id ) : m_pvInfo( v.move() ),m_id( id )
+		pVInfo( versionInfo::printVinfo v,int id,const QString& cmd ) :
+			m_pvInfo( v.move() ),m_id( id ),m_cmd( cmd )
 		{
 		}
 		const engines::engine& engine()
@@ -310,9 +311,14 @@ private:
 		{
 			return m_pvInfo ;
 		}
+		const QString& cmd()
+		{
+			return m_cmd ;
+		}
 	private:
 		versionInfo::printVinfo m_pvInfo ;
 		int m_id ;
+		QString m_cmd ;
 	};
 	void printVersion( versionInfo::printVinfo ) const ;
 	void printVersionP( versionInfo::pVInfo,const utils::qprocess::outPut& ) const ;

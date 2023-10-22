@@ -48,6 +48,46 @@ namespace utility
 class settings
 {
 public:	
+	class proxySettings
+	{
+	public:
+		enum class Type{ system,env,manual,none } ;
+
+		class type
+		{
+		public:
+			type( settings::proxySettings::Type s ) : m_type( s )
+			{
+			}
+			bool none() const
+			{
+				return m_type == settings::proxySettings::Type::none ;
+			}
+			bool system() const
+			{
+				return m_type == settings::proxySettings::Type::system ;
+			}
+			bool env() const
+			{
+				return m_type == settings::proxySettings::Type::env ;
+			}
+			bool manual() const
+			{
+				return m_type == settings::proxySettings::Type::manual ;
+			}
+		private:
+			settings::proxySettings::Type m_type ;
+		} ;
+		proxySettings( QSettings& ) ;
+		proxySettings& setProxySettings( settings::proxySettings::Type,const QString& = {} ) ;
+		settings::proxySettings::type types() const ;
+		QByteArray proxyAddress() const ;
+	private:
+		QSettings& m_settings ;
+	} ;
+
+	settings::proxySettings getProxySettings() ;
+
 	enum class tabName{ basic,batch,playlist } ;
 
 	settings( const utility::cliArguments& ) ;
@@ -56,7 +96,9 @@ public:
 
 	size_t maxConcurrentDownloads() ;
 
-	const QString& exeOriginalPath() ;
+	const QString& windowsOnly3rdPartyBinPath() ;
+	const QString& windowsOnlyExeBinPath() ;
+	const QString& windowsOnlyDefaultPortableVersionDownloadFolder() ;
 
 	QString downloadFolder() ;
 	QString libraryDownloadFolder() ;
@@ -85,7 +127,6 @@ public:
 	QPixmap defaultVideoThumbnailIcon( settings::tabName ) ;
 
 	bool portableVersion() ;
-	const QString& runningUpdatedText() ;
 	bool monitorClipboardUrl( settings::tabName ) ;
 	bool enabledHighDpiScaling() ;
 	bool showTrayIcon() ;
@@ -101,6 +142,7 @@ public:
 	bool checkForUpdates() ;
 	bool enableLibraryTab() ;
 	bool checkForEnginesUpdates() ;
+	bool autoHideDownloadWhenCompleted() ;
 
 	int textAlignment() ;
 	int networkTimeOut() ;
@@ -111,6 +153,7 @@ public:
 	int thumbnailWidth( settings::tabName ) ;
 	int thumbnailHeight( settings::tabName ) ;
 
+	void setAutoHideDownloadWhenCompleted( bool ) ;
 	void setCheckForUpdates( bool ) ;
 	void setUseInternalArchiveFile( bool ) ;
 	void clearOptionsHistory( settings::tabName ) ;
@@ -141,13 +184,42 @@ public:
 	void setLocalizationLanguage( const QString& language ) ;
 	void setWindowDimensions( const QString& window,const QString& dimenstion ) ;
 private:
-	QString m_dataPath ;
-	QString m_exePath ;
-	QString m_exeOrgPath ;
-	QString m_runningUpdated ;
+	QString downloadFolder( Logger * ) ;
+
+	struct options
+	{
+		options( const utility::cliArguments& ) ;
+
+		const QString& dataPath() const
+		{
+			return m_dataPath ;
+		}
+		const QString& windowsOnly3rdPartyBinPath() const
+		{
+			return m_exe3PartyBinPath ;
+		}
+		const QString windowsOnlyExePath() const
+		{
+			return m_exePath ;
+		}
+		const QString& windowsOnlyDefaultPortableVersionDownloadFolder() const
+		{
+			return m_defaultPortableVersionDownloadFolder ;
+		}
+		bool portableVersion() const
+		{
+			return m_portableVersion ;
+		}
+		QString m_dataPath ;
+		QString m_exePath ;
+		QString m_exe3PartyBinPath ;
+		QString m_defaultPortableVersionDownloadFolder ;
+		bool m_portableVersion ;
+	} ;
+
+	options m_options ;
 
 	bool m_EnableHighDpiScaling ;
-	bool m_portableVersion ;
 	std::unique_ptr< QSettings > m_settingsP ;
 	QSettings& m_settings ;
 };

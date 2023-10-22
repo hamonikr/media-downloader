@@ -39,7 +39,7 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QDesktopServices>
-
+#include <QNetworkProxyFactory>
 #include <QDir>
 
 static QProcessEnvironment _getEnvPaths( const engines::enginePaths& paths,settings& settings )
@@ -48,7 +48,7 @@ static QProcessEnvironment _getEnvPaths( const engines::enginePaths& paths,setti
 
 	const auto& basePath = paths.binPath() ;
 
-	auto m = QDir( basePath ).entryList( QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ) ;
+	const auto m = QDir( basePath ).entryList( QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ) ;
 
 	auto separator = [ & ](){
 
@@ -64,16 +64,16 @@ static QProcessEnvironment _getEnvPaths( const engines::enginePaths& paths,setti
 
 	if( utility::platformIsWindows() ){
 
-		auto mm = settings.exeOriginalPath() ;
+		const auto& mm = settings.windowsOnly3rdPartyBinPath() ;
 
 		s += separator + mm ;
 
-		auto m = QDir( mm + "/3rdParty" ).entryList( QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ) ;
+		const auto m = QDir( mm ).entryList( QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ) ;
 
 		for( const auto& it : m ){
 
-			s += separator + mm + "/3rdParty/" + it ;
-			s += separator + mm + "/3rdParty/" + it + "/bin" ;
+			s += separator + mm + "/" + it ;
+			s += separator + mm + "/" + it + "/bin" ;
 		}
 	}
 
@@ -97,38 +97,91 @@ static QProcessEnvironment _getEnvPaths( const engines::enginePaths& paths,setti
 	return env ;
 }
 
-engines::engines( Logger& l,settings& s,int id ) :
+engines::engines( Logger& l,const engines::enginePaths& paths,settings& s,int id ) :
 	m_logger( l ),
 	m_settings( s ),
-	m_enginePaths( m_settings ),
+	m_enginePaths( paths ),
 	m_processEnvironment( _getEnvPaths( m_enginePaths,m_settings ) ),
-	m_defaultEngine( l,s )
+	m_defaultEngine( l,m_enginePaths )
 {
-	if( s.showVersionInfoWhenStarting() ){
+	this->updateEngines( true,id ) ;
 
-		m_logger.add( QByteArray( "*****************************************************" ),id ) ;
+	this->showBanner() ;
+}
+
+void engines::showBanner()
+{
+	m_bannerId = utility::sequentialID() ;
+
+	const auto& id = m_bannerId ;
+
+	if( m_settings.showVersionInfoWhenStarting() ){
+
+		m_logger.add( utility::barLine(),id ) ;
 
 		m_logger.add( QObject::tr( "To Disable These Checks, Do The Following:-" ),id ) ;
 		m_logger.add( QObject::tr( "1. Go To \"Configure\" Tab." ),id ) ;
 		m_logger.add( QObject::tr( "2. Go To \"General Options\" Sub Tab." ),id ) ;
 		m_logger.add( QObject::tr( "3. Uncheck \"Show Version Info When Starting\"." ),id ) ;
 
-		m_logger.add( QByteArray( "*****************************************************" ),id ) ;
+		m_logger.add( utility::barLine(),id ) ;
 	}
 
-	const auto& utxt = m_settings.runningUpdatedText() ;
+	if( utility::platformIsWindows() ){
 
-	if( !utxt.isEmpty() ){
+		if( m_settings.portableVersion() ){
 
-		m_logger.add( utxt,id ) ;
+			m_logger.add( QObject::tr( "Running In Portable Mode" ),id ) ;
+		}else{
+			m_logger.add( QObject::tr( "Running In Installation Mode" ),id ) ;
+		}
 	}
 
-	if( m_settings.portableVersion() ){
+	m_logger.add( QObject::tr( "Download Path: %1" ).arg( m_settings.downloadFolder( m_logger ) ),id ) ;
+	m_logger.add( QObject::tr( "App Data Path: %1" ).arg( m_enginePaths.basePath() ),id ) ;
 
-		m_logger.add( QObject::tr( "Running in portable mode" ),id ) ;
-		m_logger.add( QObject::tr( "Download path: " ) + m_settings.downloadFolder( m_logger ),id ) ;
+	//if( utility::platformIsWindows() ){
+
+	//	const auto& m = m_settings.windowsOnly3rdPartyBinPath() ;
+	//	m_logger.add( QObject::tr( "3rd Party Path: %1" ).arg( m ),id ) ;
+	//}
+}
+
+void engines::setNetworkProxy( engines::proxySettings e,bool firstTime )
+{
+	if( e.isSet() ){
+
+		if( m_networkProxy != e ){
+
+			const auto& s = e.networkProxyString() ;
+
+			if( !firstTime ){
+
+				m_logger.add( utility::barLine(),m_bannerId ) ;
+			}
+
+			m_logger.add( QObject::tr( "Setting Proxy Server Address Of %1" ).arg( s ),m_bannerId ) ;
+
+			m_logger.add( utility::barLine(),m_bannerId ) ;
+		}
+	}else{
+		if( firstTime ){
+
+			m_logger.add( utility::barLine(),m_bannerId ) ;
+
+		}else if( m_networkProxy != e ){
+
+			m_logger.add( utility::barLine(),m_bannerId ) ;
+
+			m_logger.add( QObject::tr( "Unsetting Proxy Server Address" ),m_bannerId ) ;
+
+			m_logger.add( utility::barLine(),m_bannerId ) ;
+		}
 	}
-	this->updateEngines( true,id ) ;
+
+	m_networkProxy = e.move() ;
+
+	QNetworkProxy::setApplicationProxy( m_networkProxy.networkProxy() ) ;
 }
 
 static void _openUrls( tableWidget& table,int row,settings& settings,bool galleryDl )
@@ -139,7 +192,7 @@ static void _openUrls( tableWidget& table,int row,settings& settings,bool galler
 
 		m.removeFirst() ;
 
-		for( const auto& it : m ){
+		for( const auto& it : util::asConst( m ) ){
 
 			if( galleryDl ){
 
@@ -267,7 +320,9 @@ void engines::updateEngines( bool addAll,int id )
 
 	_engine_add( "",_get_engine_by_path( m_defaultEngine.configFileName(),*this,m_logger,m_enginePaths ) ) ;
 
-	for( const auto& it : this->enginesList() ){
+	const auto mm = this->enginesList() ;
+
+	for( const auto& it : mm ){
 
 		_engine_add( it,_get_engine_by_path( it,*this,m_logger,m_enginePaths ) ) ;
 	}
@@ -444,6 +499,11 @@ static QString _findExecutable( const QString& exeName,const QStringList& paths,
 
 QString engines::findExecutable( const QString& exeName ) const
 {
+	if( utility::platformIsWindows() && exeName == "media-downloader.exe" ){
+
+		return utility::windowsApplicationDirPath() + "/media-downloader.exe" ;
+	}
+
 	QFileInfo info( exeName ) ;
 
 	if( info.isAbsolute() ){
@@ -453,7 +513,7 @@ QString engines::findExecutable( const QString& exeName ) const
 
 	auto paths = [ this ](){
 
-		if( utility::platformIsWindows() || utility::platformisOS2() ){
+		if( utility::platformIsLikeWindows() ){
 
 			return this->processEnvironment().value( "PATH" ).split( ';' ) ;
 		}else{
@@ -461,7 +521,7 @@ QString engines::findExecutable( const QString& exeName ) const
 		}
 	}() ;
 
-	if( utility::platformIsWindows() ){
+	if( utility::platformIsLikeWindows() ){
 
 		auto m = _findExecutable( exeName,paths,info ) ;
 
@@ -761,16 +821,18 @@ engines::engine::engine( Logger& logger,
 	}
 }
 
-QString engines::engine::updateCmdPath( const QString& e ) const
+QString engines::engine::updateCmdPath( Logger& logger,const QString& e ) const
 {
-	auto exe = m_functions->updateCmdPath( e ) ;
+	auto exe = m_engine->updateCmdPath( e ) ;
 
 	if( exe.isEmpty() ){
 
-		//problems ahead, exe should never be empty
+		auto m = "Trouble Ahead, Engine's Exe Not Found: " + m_engine->engine().name() ;
+
+		logger.add( m,utility::sequentialID() ) ;
 	}
 
-	const_cast< engines::engine::exeArgs * >( &m_exePath )->updateRealExe( exe ) ;
+	const_cast< engines::engine::exeArgs& >( m_exePath ).updateRealExe( exe ) ;
 
 	return exe ;
 }
@@ -910,7 +972,7 @@ const QString& engines::engine::commandName() const
 
 bool engines::engine::breakShowListIfContains( const QStringList& e ) const
 {
-	return m_functions->breakShowListIfContains( e ) ;
+	return m_engine->breakShowListIfContains( e ) ;
 }
 
 QString engines::engine::setVersionString( const QString& data ) const
@@ -954,7 +1016,7 @@ void engines::engine::setPermissions( const QString& e ) const
 
 engines::enginePaths::enginePaths( settings& s )
 {
-	m_basePath      = s.configPaths() ;
+	m_basePath = s.configPaths() ;
 
 	while( m_basePath.endsWith( '/' ) ){
 
@@ -986,6 +1048,68 @@ QString engines::enginePaths::socketPath()
 		auto m = m_basePath + "/tmp" ;
 		QDir().mkpath( m ) ;
 		return m  + "/ipc" ;
+	}
+}
+
+void engines::enginePaths::confirmPaths( Logger& logger ) const
+{
+	QFileInfo fileInfo ;
+
+	std::vector< QString > warning ;
+
+	auto _check_exists = [ & ]( const QString& m,bool checkIfExecutable ){
+
+		fileInfo.setFile( m ) ;
+
+		if( fileInfo.exists() ){
+
+			if( !fileInfo.isWritable() ){
+
+				warning.emplace_back( "Trouble Ahead, Folder Not Writable: " + m ) ;
+			}
+			if( !fileInfo.isReadable() ){
+
+				warning.emplace_back( "Trouble Ahead, Folder Not Readable: " + m ) ;
+			}
+			if( checkIfExecutable && !fileInfo.isExecutable() ){
+
+				warning.emplace_back( "Trouble Ahead, Folder Not Executable: " + m ) ;
+			}
+		}else{
+			warning.emplace_back( "Trouble Ahead, Folder Does Not Exist: " + m ) ;
+		}
+	} ;
+
+	if( utility::platformIsWindows() ){
+
+		utility::ntfsEnablePermissionChecking( true ) ;
+	}
+
+	_check_exists( m_basePath,false ) ;
+	_check_exists( m_binPath,true ) ;
+	_check_exists( m_enginePath,false ) ;
+	_check_exists( m_dataPath,false ) ;
+	_check_exists( m_tmp,false ) ;
+
+	if( utility::platformIsWindows() ){
+
+		utility::ntfsEnablePermissionChecking( false ) ;
+	}
+
+	if( !warning.empty() ){
+
+		auto id = utility::sequentialID() ;
+
+		const auto& m = utility::barLine() ;
+
+		logger.add( m,id ) ;
+
+		for( const auto& it : warning ){
+
+			logger.add( it,id ) ;
+		}
+
+		logger.add( m,id ) ;
 	}
 }
 
@@ -1027,7 +1151,11 @@ QString engines::engine::functions::processCompleteStateText( const engine::engi
 
 		return QObject::tr( "Download completed" ) ;
 	}else{
-		if( f.exitStatus() == QProcess::NormalExit ){
+		using m = engines::ProcessExitState::ExitStatus ;
+
+		auto s = f.exitStatus() ;
+
+		if( s == m::NormalExit ){
 
 			auto m = QString::number( f.errorCode() ) ;
 
@@ -1035,6 +1163,10 @@ QString engines::engine::functions::processCompleteStateText( const engine::engi
 			auto b = "(" + QObject::tr( "ErrorCode" ) + "=" + m + ")" ;
 
 			return a + b ;
+
+		}else if( s == m::FailedToStart ){
+
+			return QObject::tr( "Download Failed, Engine failed to start" ) ;
 		}else{
 			return QObject::tr( "Download Failed, Engine crashed" ) ;
 		}
@@ -1171,7 +1303,7 @@ const QProcessEnvironment& engines::engine::functions::processEnvironment() cons
 	return m_processEnvironment ;
 }
 
-std::vector< engines::engine::functions::mediaInfo > engines::engine::functions::mediaProperties( const QByteArray& e )
+std::vector< engines::engine::functions::mediaInfo > engines::engine::functions::mediaProperties( Logger&,const QByteArray& e )
 {
 	auto args = util::split( e,'\n' ) ;
 
@@ -1214,7 +1346,7 @@ std::vector< engines::engine::functions::mediaInfo > engines::engine::functions:
 	return s ;
 }
 
-std::vector< engines::engine::functions::mediaInfo > engines::engine::functions::mediaProperties( const QJsonArray& )
+std::vector< engines::engine::functions::mediaInfo > engines::engine::functions::mediaProperties( Logger&,const QJsonArray& )
 {
 	return {} ;
 }
@@ -1328,6 +1460,10 @@ void engines::engine::functions::updateLocalOptions( QStringList& )
 {
 }
 
+void engines::engine::functions::setProxySetting( QStringList&,const QString& )
+{
+}
+
 QString engines::engine::functions::setCredentials( QStringList&,QStringList& )
 {
 	return {} ;
@@ -1348,7 +1484,7 @@ engines::engine::functions::onlineVersion engines::engine::functions::versionInf
 
 			m.replace( ",","" ).replace( "v","" ) ;
 
-			return { version,m } ;
+			return { m,m } ;
 		}else{
 			return { version,version } ;
 		}
@@ -1441,12 +1577,16 @@ public:
 
 		}else if( sp.size() == 2 && sp[ 0 ].size() > 0 && sp[ 1 ].size() > 0 ){
 
-			for( const auto& m : util::split( data,sp[ 0 ][ 0 ] ) ){
+			const auto mm = util::split( data,sp[ 0 ][ 0 ] ) ;
+
+			for( const auto& m : mm ){
 
 				this->add( m,sp[ 1 ][ 0 ] ) ;
 			}
 		}else{
-			for( const auto& m : util::split( data,'\r' ) ){
+			const auto mm = util::split( data,'\r' ) ;
+
+			for( const auto& m : mm ){
 
 				this->add( m,'\n' ) ;
 			}
@@ -1474,9 +1614,11 @@ private:
 
 		if( err.error == QJsonParseError::NoError ){
 
-			auto obj = json.object() ;
+			auto oldObject = json.object() ;
 
-			auto oldFormats = obj.value( "formats" ).toArray() ;
+			const auto oldFormats = oldObject.value( "formats" ).toArray() ;
+
+			QJsonObject newObject ;
 
 			QJsonArray newFormats ;
 
@@ -1489,16 +1631,33 @@ private:
 				newFormats.append( obj ) ;
 			}
 
-			if( newFormats.isEmpty() ){
+			if( !newFormats.isEmpty() ){
 
-				obj.remove( "formats" ) ;
-			}else{
-				obj.insert( "formats",newFormats ) ;
+				newObject.insert( "formats",newFormats ) ;
+			}
+
+			oldObject.remove( "formats" ) ;
+
+			for( auto it = oldObject.begin() ; it != oldObject.end() ; it++ ){
+
+				const auto& s = it.value() ;
+
+				if( s.isString() ){
+
+					auto ss = s.toString() ;
+
+					if( ss != "NA" && ss != "\"NA\"" ){
+
+						newObject.insert( it.key(),ss ) ;
+					}
+				}else{
+					newObject.insert( it.key(),it.value() ) ;
+				}
 			}
 
 			auto m = QJsonDocument::JsonFormat::Indented ;
 
-			auto s = QJsonDocument( obj ).toJson( m ) ;
+			auto s = QJsonDocument( newObject ).toJson( m ) ;
 
 			m_outPut.add( s,m_id ) ;
 
@@ -1538,7 +1697,9 @@ private:
 	}
 	void add( const QByteArray& data,QChar token )
 	{
-		for( const auto& e : util::split( data,token ) ){
+		const auto mm = util::split( data,token ) ;
+
+		for( const auto& e : mm ){
 
 			if( !this->skipLine( e ) ){
 
@@ -1555,17 +1716,15 @@ private:
 	{
 		auto result = m_filterOutPut.formatOutput( m_locale,m_outPut,e ) ;
 
+		const auto& m = result.progress() ;
+
 		if( m_outPut.mainLogger() ){
 
-			if( !result.progress().isEmpty() ){
-
-				const auto& m = result.progress() ;
+			if( !m.isEmpty() ){
 
 				m_outPut.replaceOrAdd( m,m_id,result.meetCondition() ) ;
 			}
 		}else{
-			const auto& m = result.progress() ;
-
 			m_outPut.replaceOrAdd( m,m_id,result.meetCondition() ) ;
 		}
 	}
@@ -1956,4 +2115,116 @@ engines::configDefaultEngine::configDefaultEngine( Logger&logger,const enginePat
 
 engines::engine::functions::filterOutPut::~filterOutPut()
 {
+}
+
+bool engines::proxySettings::operator!=( const engines::proxySettings& other ) const
+{
+	return this->networkProxyString() != other.networkProxyString() ;
+}
+
+QNetworkProxy engines::proxySettings::toQNetworkProxy( const QString& u ) const
+{
+	QNetworkProxy proxy ;
+
+	if( u.isEmpty() ){
+
+		proxy.setType( QNetworkProxy::NoProxy ) ;
+
+		return proxy ;
+	}else{
+		auto url = u ;
+
+		if( url.startsWith( "socks5" ) ){
+
+			proxy.setType( QNetworkProxy::Socks5Proxy ) ;
+		}else{
+			proxy.setType( QNetworkProxy::HttpProxy ) ;
+		}
+
+		auto e = url.indexOf( "://" ) ;
+
+		if( e != -1 ){
+
+			url = url.mid( e + 3 ) ;
+		}
+
+		e = url.indexOf( '@' ) ;
+
+		if( e != -1 ){
+
+			auto credentials = url.mid( 0,e ) ;
+
+			auto ee = credentials.indexOf( ':' ) ;
+
+			if( ee != -1 ){
+
+				proxy.setUser( credentials.mid( 0,ee ) ) ;
+				proxy.setPassword( credentials.mid( ee + 1 ) ) ;
+			}
+
+			url = url.mid( e + 1 ) ;
+		}
+
+		e = url.indexOf( ':' ) ;
+
+		if( e != -1 ){
+
+			proxy.setPort( url.mid( e + 1 ).replace( "/","" ).toInt() ) ;
+
+			url = url.mid( 0,e ) ;
+		}
+
+		proxy.setHostName( url ) ;
+
+		if( proxy.hostName().isEmpty() ){
+
+			proxy.setType( QNetworkProxy::NoProxy ) ;
+		}
+
+		return proxy ;
+	}
+}
+
+void engines::proxySettings::setApplicationProxy( const QString& e ) const
+{
+	if( m_currentProxyString != e ){
+
+		m_currentProxyString = e ;
+
+		QNetworkProxy::setApplicationProxy( this->toQNetworkProxy( e ) ) ;
+	}
+}
+
+void engines::proxySettings::setDefaultProxy() const
+{
+	QNetworkProxy::setApplicationProxy( m_networkProxy ) ;
+}
+
+QString engines::proxySettings::toString( const QNetworkProxy& e ) const
+{
+	if( e.type() == QNetworkProxy::NoProxy ){
+
+		return {} ;
+	}else{
+		QString type ;
+		QString credentials ;
+		QString host ;
+
+		if( e.type() == QNetworkProxy::Socks5Proxy ){
+
+			type = "socks5://" ;
+		}
+
+		if( !e.user().isEmpty() && !e.password().isEmpty() ){
+
+			credentials = e.user() + ":" + e.password() + "@" ;
+		}
+
+		if( !e.hostName().isEmpty() ){
+
+			host = e.hostName() + ":" + QString::number( e.port() ) ;
+		}
+
+		return type + credentials + host ;
+	}
 }

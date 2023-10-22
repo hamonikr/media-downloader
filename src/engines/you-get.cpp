@@ -41,6 +41,12 @@ bool you_get::foundNetworkUrl( const QString& url )
 	return url.startsWith( "you-get" ) && url.endsWith( ".tar.gz" ) ;
 }
 
+void you_get::setProxySetting( QStringList& e,const QString& s )
+{
+	e.append( "--http-proxy" ) ;
+	e.append( s ) ;
+}
+
 void you_get::renameArchiveFolder( const QString& e )
 {
 	const auto m = QDir( e ).entryList( QDir::Filter::Dirs | QDir::Filter::NoDotAndDotDot ) ;
@@ -64,7 +70,7 @@ void you_get::renameArchiveFolder( const QString& e )
 	}
 }
 
-std::vector<engines::engine::functions::mediaInfo> you_get::mediaProperties( const QByteArray& e )
+std::vector<engines::engine::functions::mediaInfo> you_get::mediaProperties( Logger& l,const QByteArray& e )
 {
 	QJsonParseError err ;
 
@@ -72,8 +78,10 @@ std::vector<engines::engine::functions::mediaInfo> you_get::mediaProperties( con
 
 	std::vector<engines::engine::functions::mediaInfo> s ;
 
-	if( err.error == QJsonParseError::NoError ){
+	if( err.error != QJsonParseError::NoError ){
 
+		utility::failedToParseJsonData( l,err ) ;
+	}else{
 		const auto obj = json.object().value( "streams" ).toObject() ;
 
 		Logger::locale locale ;
@@ -175,24 +183,22 @@ const QByteArray& you_get::you_getFilter::operator()( const Logger::Data& s )
 
 		if( m_title.isEmpty() ){
 
-			auto m = s.toStringList() ;
+			s.toStringList().forEach( [ & ]( const QByteArray& e ){
 
-			for( const auto& mm : m ){
+				if( e.startsWith( "you-get: [Error]" ) ){
 
-				const QByteArray& it = mm ;
-
-				if( it.startsWith( "you-get: [Error]" ) ){
-
-					m_title = it ;
+					m_title = e ;
 
 					if( m_title.endsWith( '.' ) ){
 
 						m_title.truncate( m_title.size() - 1 ) ;
 					}
 
-					break ;
+					return true ;
+				}else{
+					return false ;
 				}
-			}
+			} ) ;
 		}
 
 		return m_title ;

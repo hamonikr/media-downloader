@@ -390,6 +390,12 @@ QStringList svtplay_dl::horizontalHeaderLabels() const
 	return m ;
 }
 
+void svtplay_dl::setProxySetting( QStringList& e,const QString& s )
+{
+	e.append( "--proxy" ) ;
+	e.append( s ) ;
+}
+
 static bool _add( std::vector< engines::engine::functions::mediaInfo >& s,const QString& e )
 {
 	for( const auto& m : s ){
@@ -403,7 +409,7 @@ static bool _add( std::vector< engines::engine::functions::mediaInfo >& s,const 
 	return true ;
 }
 
-std::vector<engines::engine::functions::mediaInfo> svtplay_dl::mediaProperties( const QByteArray& e )
+std::vector<engines::engine::functions::mediaInfo> svtplay_dl::mediaProperties( Logger&,const QByteArray& e )
 {
 	auto mm = util::split( e,'\n',true ) ;
 
@@ -567,22 +573,22 @@ public:
 		auto& d = args.data ;
 		const auto& m = args.outPut ;
 
-		if( d.svtData().fileName().isEmpty() ){
+		auto notMainLogger = !d.mainLogger() ;
 
-			for( const auto& e : d.toStringList() ){
+		if( notMainLogger && d.svtData().fileName().isEmpty() ){
 
-				const QByteArray& s = e ;
+			d.toStringList().forEach( [ & ]( const QByteArray& s ){
 
 				if( s.startsWith( "Outfile: " ) ){
 
 					d.svtData().setFileName( s.mid( 9 ) ) ;
 				}
-			}
+			} ) ;
 		}
 
 		if( m.startsWith( "DEBUG " ) ){
 
-			if( m.contains( " 200 " ) ){
+			if( notMainLogger && m.contains( " 200 " ) ){
 
 				auto q = m.lastIndexOf( ' ' ) ;
 
@@ -590,7 +596,7 @@ public:
 
 					auto mm = m.mid( q + 1 ) ;
 
-					d.svtData().size( mm.toLongLong() ) ;
+					d.svtData().addToSize( mm.toLongLong() ) ;
 				}
 			}
 
@@ -650,24 +656,38 @@ public:
 
 		auto dd = util::split( c.mid( cc + 1 ),'/' ) ;
 
-		auto ll = l.formattedDataSize( d.svtData().size() ) ;
-
 		if( dd.size() == 2 ){
 
 			auto x = dd[ 0 ].toDouble() ;
 			auto y = dd[ 1 ].toDouble() ;
 
-			auto z = x * 100 / y ;
+			auto z = x / y ;
 
-			auto zz = QString::number( z,'f',2 ) ;
+			auto zz = QString::number( z * 100,'f',2 ) ;
 
-			auto ss = ll + ", [" + dd[ 0 ] + "/" + dd[ 1 ] + "] (" + zz + "%), " + a ;
+			auto ss = "[" + dd[ 0 ] + "/" + dd[ 1 ] + "] (" + zz + "%), " + a ;
 
 			m_tmp = ss.toUtf8() ;
+
+			if( !d.mainLogger() ){
+
+				auto ss = d.svtData().size() ;
+
+				auto ll = l.formattedDataSize( ss ).toUtf8() ;
+
+				auto mm = static_cast< qint64 >( ss / z ) ;
+
+				auto lll = l.formattedDataSize( mm ).toUtf8() ;
+
+				m_tmp = ll + "/~" + lll + ", " + m_tmp ;
+			}
+
+			if( x == y ){
+
+				d.svtData().reset() ;
+			}
 		}else{
-			auto ss = ll + ", [00/00] (NA), " + a ;
-
-			m_tmp = ss.toUtf8() ;
+			m_tmp = "[00/00] (NA), " + a ;
 		}
 
 		return { m_tmp,m_engine,_meetCondition } ;

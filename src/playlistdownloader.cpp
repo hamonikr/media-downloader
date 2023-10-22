@@ -238,16 +238,20 @@ playlistdownloader::playlistdownloader( Context& ctx ) :
 
 		QMenu m ;
 
-		if( row == -1 ){
+		if( row == -1 || !m_table.rowIsVisible( row ) ){
 
-			return utility::appendContextMenu( m,this->enabled(),function,false ) ;
+			auto ss = this->enabled() ;
+
+			return utility::appendContextMenu( m,ss,function,false,row,m_table ) ;
 		}
 
 		auto txt = m_table.runningState( row ) ;
 
 		if( txt.isEmpty() ){
 
-			return utility::appendContextMenu( m,this->enabled(),function,false ) ;
+			auto ss = this->enabled() ;
+
+			return utility::appendContextMenu( m,ss,function,false,row,m_table ) ;
 		}
 
 		auto running = downloadManager::finishedStatus::running( txt ) ;
@@ -286,6 +290,11 @@ playlistdownloader::playlistdownloader( Context& ctx ) :
 			m_ui.pbBDDownload->setEnabled( m_table.rowCount() ) ;
 		} ) ;
 
+		if( m_settings.autoHideDownloadWhenCompleted() ){
+
+			utility::hideUnhideEntries( m,m_table,row,true ) ;
+		}
+
 		ac = m.addAction( tr( "Copy Url" ) ) ;
 
 		connect( ac,&QAction::triggered,[ this,row ](){
@@ -323,11 +332,13 @@ playlistdownloader::playlistdownloader( Context& ctx ) :
 
 			connect( ac,&QAction::triggered,[ &engine,this,row,forceDownload ](){
 
+				auto visible = m_table.rowIsVisible( row ) ;
+
 				downloadManager::index indexes( m_table,false,downloadManager::index::tab::playlist ) ;
 
 				auto e = m_table.runningState( row ) ;
 
-				if( !downloadManager::finishedStatus::finishedWithSuccess( e ) || forceDownload ){
+				if( visible && ( !downloadManager::finishedStatus::finishedWithSuccess( e ) || forceDownload ) ){
 
 					auto u = m_table.downloadingOptions( row ) ;
 
@@ -396,7 +407,7 @@ playlistdownloader::playlistdownloader( Context& ctx ) :
 
 		m.addSeparator() ;
 
-		utility::appendContextMenu( m,{ this->enabled(),finishSuccess },function ) ;
+		utility::appendContextMenu( m,{ this->enabled(),finishSuccess },function,true ) ;
 	} ) ;
 
 	auto s = static_cast< void( QComboBox::* )( int ) >( &QComboBox::activated ) ;
@@ -690,7 +701,7 @@ void playlistdownloader::exiting()
 	utility::saveDownloadList( m_ctx,m_table,false ) ;
 }
 
-void playlistdownloader::gotEvent( const QByteArray& )
+void playlistdownloader::gotEvent( const QJsonObject& )
 {
 }
 
@@ -782,7 +793,9 @@ void playlistdownloader::download( const engines::engine& engine )
 
 		auto e = m_table.runningState( s ) ;
 
-		if( validUrl && !downloadManager::finishedStatus::finishedWithSuccess( e ) ){
+		auto visible = m_table.rowIsVisible( s ) ;
+
+		if( visible && validUrl && !downloadManager::finishedStatus::finishedWithSuccess( e ) ){
 
 			if( s >= 0 && s < m_table.rowCount() ){
 
@@ -818,7 +831,7 @@ void playlistdownloader::download( const engines::engine& eng,int index )
 {
 	const auto& engine = utility::resolveEngine( m_table,eng,m_ctx.Engines(),index ) ;
 
-	auto aa = [ &engine,index,this ]( utility::ProcessExitState e,const playlistdownloader::opts& ){
+	auto aa = [ &engine,index,this ]( engines::ProcessExitState e,const playlistdownloader::opts& ){
 
 		auto aa = [ this ]( const engines::engine& engine,int index ){
 
@@ -964,6 +977,10 @@ void playlistdownloader::getList( playlistdownloader::listIterator iter,
 
 	opts.append( "-v" ) ;
 
+	auto m = m_ui.lineEditPLUrlOptions->text() ;
+
+	utility::addToListOptionsFromsDownload( opts,m,m_ctx,engine ) ;
+
 	opts.append( url ) ;
 
 	m_networkRunning = 0 ;
@@ -991,7 +1008,7 @@ void playlistdownloader::getList( customOptions&& c,
 			m_gettingPlaylist = true ;
 			m_ui.pbPLCancel->setEnabled( true ) ;
 
-		},[ &engine,this,iter = iter.move() ]( utility::ProcessExitState st,const playlistdownloader::opts& )mutable{
+		},[ &engine,this,iter = iter.move() ]( engines::ProcessExitState st,const playlistdownloader::opts& )mutable{
 
 			if( m_stillProcessingJsonOutput ){
 
@@ -1312,6 +1329,18 @@ void playlistdownloader::reportFinishedStatus( const reportFinished& f )
 		if( m_table.allFinishedWithSuccess() ){
 
 			this->resizeTable( playlistdownloader::size::small ) ;
+		}
+	}
+
+	if( m_ctx.Settings().autoHideDownloadWhenCompleted() ){
+
+		auto index = f.finishedStatus().index() ;
+
+		const auto& r = f.finishedStatus().finishedWithSuccess() ;
+
+		if( m_table.runningState( index ) == r ){
+
+			m_table.hideRow( index ) ;
 		}
 	}
 

@@ -533,6 +533,8 @@ configure::configure( const Context& ctx ) :
 
 	m_ui.cbConfigureShowVersionInfo->setChecked( m_settings.showVersionInfoWhenStarting() ) ;
 
+	m_ui.cbAutoHideDownloadCompleted->setChecked( m_settings.autoHideDownloadWhenCompleted() ) ;
+
 	m_ui.cbConfigureShowMetaDataInBatchDownloader->setChecked( m_settings.showMetaDataInBatchDownloader() ) ;
 
 	m_ui.cbAutoSaveNotDownloadedMedia->setChecked( m_settings.autoSavePlaylistOnExit() ) ;
@@ -553,9 +555,87 @@ configure::configure( const Context& ctx ) :
 		}
 	} ) ;
 
-	m_ui.lineEditConfigureMaximuConcurrentDownloads->setText( QString::number( m_settings.maxConcurrentDownloads() ) ) ;
+	auto mm = QString::number( m_settings.maxConcurrentDownloads() ) ;
+
+	m_ui.lineEditConfigureMaximuConcurrentDownloads->setText( mm ) ;
+
+	auto proxy      = m_ctx.Settings().getProxySettings() ;
+	auto proxy_type = proxy.types() ;
+
+	m_ui.rbUseSystemProxy->setEnabled( utility::platformIsWindows() ) ;
+
+	if( proxy_type.manual() ){
+
+		m_ui.rbUseManualProxy->setChecked( true ) ;
+		m_ui.lineEditCustormProxyAddress->setEnabled( true ) ;
+		m_ui.labelProxy->setEnabled( true ) ;
+	}else{
+		m_ui.lineEditCustormProxyAddress->setEnabled( false ) ;
+		m_ui.labelProxy->setEnabled( false ) ;
+
+		if( proxy_type.env() ){
+
+			m_ui.rbGetFromEnv->setChecked( true ) ;
+
+		}else if( proxy_type.system() ){
+
+			m_ui.rbUseSystemProxy->setChecked( true ) ;
+
+		}else if( proxy_type.none() ){
+
+			m_ui.rbNoProxy->setChecked( true ) ;
+		}
+	}
+
+	m_ui.lineEditCustormProxyAddress->setText( proxy.proxyAddress() ) ;
+
+	connect( m_ui.rbNoProxy,&QRadioButton::toggled,[ this ]( bool s ){
+
+		if( s ){
+
+			this->updateProxySettings( settings::proxySettings::Type::none ) ;
+		}
+	} ) ;
+
+	connect( m_ui.rbUseManualProxy,&QRadioButton::toggled,[ this ]( bool s ){
+
+		m_ui.lineEditCustormProxyAddress->setEnabled( s ) ;
+		m_ui.labelProxy->setEnabled( s ) ;
+
+		if( s ){
+
+			auto a = settings::proxySettings::Type::manual ;
+			auto e = m_ui.lineEditCustormProxyAddress->text() ;
+			auto m = m_settings.getProxySettings() ;
+
+			m_ctx.TabManager().setProxy( m.setProxySettings( a,e ),a ) ;
+		}
+	} ) ;
+
+	connect( m_ui.rbUseSystemProxy,&QRadioButton::toggled,[ this ]( bool s ){
+
+		if( s ){
+
+			this->updateProxySettings( settings::proxySettings::Type::system ) ;
+		}
+	} ) ;
+
+	connect( m_ui.rbGetFromEnv,&QRadioButton::toggled,[ this ]( bool s ){
+
+		if( s ){
+
+			this->updateProxySettings( settings::proxySettings::Type::env ) ;
+		}
+	} ) ;
 
 	this->showOptions() ;
+}
+
+void configure::updateProxySettings( settings::proxySettings::Type s )
+{
+	m_ui.lineEditCustormProxyAddress->setEnabled( false ) ;
+	m_ui.labelProxy->setEnabled( false ) ;
+	m_ctx.TabManager().setProxy( m_settings.getProxySettings().setProxySettings( s ),s ) ;
 }
 
 void configure::init_done()
@@ -692,6 +772,11 @@ QString configure::engineDefaultDownloadOptions( const QString& engineName )
 	return options ;
 }
 
+QString configure::defaultDownloadOption()
+{
+	return "bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best" ;
+}
+
 void configure::setDownloadOptions( int row,tableWidget& table )
 {
 	m_downloadDefaultOptions.setDownloadOptions( row,table ) ;
@@ -713,6 +798,7 @@ void configure::saveOptions()
 	m_settings.setAutoSavePlaylistOnExit( m_ui.cbAutoSaveNotDownloadedMedia->isChecked() ) ;
 	m_settings.setCheckForUpdates( m_ui.cbCheckForUpdates->isChecked() ) ;
 	m_settings.setTextEncoding( m_ui.lineEditConfigureTextEncoding->text() ) ;
+	m_settings.setAutoHideDownloadWhenCompleted( m_ui.cbAutoHideDownloadCompleted->isChecked() ) ;
 
 	auto s = m_ui.lineEditConfigureMaximuConcurrentDownloads->text() ;
 
@@ -745,6 +831,36 @@ void configure::saveOptions()
 
 			m_settings.setCookieFilePath( ss->name(),m_ui.lineEditConfigureCookiePath->text() ) ;
 		}
+	}
+
+	settings::proxySettings::Type type = settings::proxySettings::Type::none ;
+
+	if( m_ui.rbNoProxy->isChecked() ){
+
+		type = settings::proxySettings::Type::none ;
+
+	}else if( m_ui.rbUseSystemProxy->isChecked() ){
+
+		type = settings::proxySettings::Type::system ;
+
+	}else if( m_ui.rbGetFromEnv->isChecked() ){
+
+		type = settings::proxySettings::Type::env ;
+
+	}else if( m_ui.rbUseManualProxy->isChecked() ){
+
+		type = settings::proxySettings::Type::manual ;
+	}
+
+	auto p = m_settings.getProxySettings() ;
+
+	if( type == settings::proxySettings::Type::manual ){
+
+		auto s = m_ui.lineEditCustormProxyAddress->text() ;
+
+		m_ctx.TabManager().setProxy( p.setProxySettings( type,s ),type ) ;
+	}else{
+		m_ctx.TabManager().setProxy( p.setProxySettings( type ),type ) ;
 	}
 
 	this->savePresetOptions() ;
@@ -877,6 +993,14 @@ void configure::enableAll()
 		m_ui.labelPathToCookieFile->setEnabled( enable ) ;
 	}
 
+	m_ui.rbUseManualProxy->setEnabled( true ) ;
+	m_ui.rbNoProxy->setEnabled( true ) ;
+	m_ui.rbUseSystemProxy->setEnabled( utility::platformIsWindows() ) ;
+	m_ui.rbGetFromEnv->setEnabled( true ) ;
+
+	m_ui.lineEditCustormProxyAddress->setEnabled( m_ui.rbUseManualProxy->isChecked() ) ;
+	m_ui.labelProxy->setEnabled( m_ui.rbUseManualProxy->isChecked() ) ;
+
 	m_ui.label_6->setEnabled( true ) ;
 	m_ui.label_3->setEnabled( true ) ;
 	m_ui.label_4->setEnabled( true ) ;
@@ -927,6 +1051,7 @@ void configure::enableAll()
 	m_ui.cbShowTrayIcon->setEnabled( true ) ;
 	m_ui.lineEditConfigureWebsite->setEnabled( true ) ;
 	m_ui.labelConfugureWebSite->setEnabled( true ) ;
+	m_ui.cbAutoHideDownloadCompleted->setEnabled( true ) ;
 
 	if( m_settings.enabledHighDpiScaling() ){
 
@@ -936,6 +1061,12 @@ void configure::enableAll()
 
 void configure::disableAll()
 {
+	m_ui.rbUseManualProxy->setEnabled( false ) ;
+	m_ui.rbNoProxy->setEnabled( false ) ;
+	m_ui.rbUseSystemProxy->setEnabled( false ) ;
+	m_ui.rbGetFromEnv->setEnabled( false ) ;
+	m_ui.lineEditCustormProxyAddress->setEnabled( false ) ;
+	m_ui.labelProxy->setEnabled( false ) ;
 	m_ui.label_3->setEnabled( false ) ;
 	m_ui.label_4->setEnabled( false ) ;
 	m_ui.label_5->setEnabled( false ) ;
@@ -992,6 +1123,7 @@ void configure::disableAll()
 	m_ui.cbConfigureShowMetaDataInBatchDownloader->setEnabled( false ) ;
 	m_ui.lineEditConfigureWebsite->setEnabled( false ) ;
 	m_ui.labelConfugureWebSite->setEnabled( false ) ;
+	m_ui.cbAutoHideDownloadCompleted->setEnabled( false ) ;
 }
 
 configure::presetOptions::presetOptions( const Context& ctx,settings& s ) :
@@ -1098,47 +1230,47 @@ QByteArray configure::presetOptions::defaultData()
 {
 	return R"R([
     {
-	"options": "-f bestvideo[height=144][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=144]+bestaudio",
+	"options": "-f bestvideo[height=144][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=144]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 144p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=240][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=240]+bestaudio",
+	"options": "-f bestvideo[height=240][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=240]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 240p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=360][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=360]+bestaudio",
+	"options": "-f bestvideo[height=360][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=360]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 360p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=480][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=480]+bestaudio",
+	"options": "-f bestvideo[height=480][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=480]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 480p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=720][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=720]+bestaudio",
+	"options": "-f bestvideo[height=720][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=720]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 720p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=1080]+bestaudio",
+	"options": "-f bestvideo[height=1080][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=1080]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 1080p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=1440][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=1440]+bestaudio",
+	"options": "-f bestvideo[height=1440][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=1440]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 1440p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo[height=2160][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height=2160]+bestaudio",
+	"options": "-f bestvideo[height=2160][ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height=2160]+bestaudio",
 	"uiName": "Best Audio With Video Resolution Of 2160p",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestvideo+bestaudio",
+	"options": "-f bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
 	"uiName": "Best Available Audio Video",
 	"website": "Youtube"
     },

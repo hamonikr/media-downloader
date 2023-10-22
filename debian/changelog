@@ -1,3 +1,17 @@
+media-downloader (3.3.0-1+hamonikr2) kumkang; urgency=low
+
+  * Apply latest upstream
+   - Tested on HamoniKR 7.0
+
+ -- HamoniKR <pkg@hamonikr.org>  Mon, 23 Oct 2023 04:06:16 +0900
+
+media-downloader (3.3.0-1+hamonikr1) kumkang; urgency=low
+
+  * Add Korean translation
+   - Used poedit.com
+
+ -- HamoniKR <pkg@hamonikr.org>  Sun, 22 Oct 2023 15:26:11 +0900
+
 media-downloader (3.3.0-1) UNRELEASED; urgency=low
 
   * version number update by debtransform

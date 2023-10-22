@@ -196,9 +196,18 @@ void networkAccess::updateMediaDownloader( networkAccess::updateMDOptions md ) c
 
 	auto url = this->networkRequest( md.url ) ;
 
-	md.file.open( md.tmpFile ) ;
+	if( md.file.open( md.tmpFile ) ){
 
-	this->get( url,md.move(),this,&networkAccess::uMediaDownloaderM ) ;
+		this->get( url,md.move(),this,&networkAccess::uMediaDownloaderM ) ;
+	}else{
+		auto m = QObject::tr( "Failed To Open Path For Writing: %1" ).arg( md.tmpFile ) ;
+
+		this->post( m_appName,m,md.id ) ;
+
+		md.status.done() ;
+
+		m_ctx.TabManager().enableAll() ;
+	}
 }
 
 void networkAccess::emDownloader( networkAccess::updateMDOptions md,
@@ -480,17 +489,26 @@ void networkAccess::download( networkAccess::Opts opts ) const
 
 	engine.updateEnginePaths( m_ctx,opts.filePath,opts.exeBinPath,opts.tempPath ) ;
 
-	opts.file.open( opts.filePath ) ;
+	if( opts.file.open( opts.filePath ) ){
 
-	this->postDownloading( engine.name(),opts.metadata.url,opts.id ) ;
+		this->postDownloading( engine.name(),opts.metadata.url,opts.id ) ;
 
-	this->postDestination( engine.name(),opts.filePath,opts.id ) ;
+		this->postDestination( engine.name(),opts.filePath,opts.id ) ;
 
-	auto url = this->networkRequest( opts.metadata.url ) ;
+		auto url = this->networkRequest( opts.metadata.url ) ;
 
-	networkAccess::Opts2 opts2{ engine,opts.move() } ;
+		networkAccess::Opts2 opts2{ engine,opts.move() } ;
 
-	this->get( url,opts2.move(),this,&networkAccess::downloadP ) ;
+		this->get( url,opts2.move(),this,&networkAccess::downloadP ) ;
+	}else{
+		auto m = QObject::tr( "Failed To Open Path For Writing: %1" ).arg( opts.filePath ) ;
+
+		this->post( engine.name(),m,opts.id ) ;
+
+		opts.iter.reportDone() ;
+
+		m_ctx.TabManager().enableAll() ;
+	}
 }
 
 void networkAccess::downloadP( networkAccess::Opts2& opts2,
@@ -577,7 +595,7 @@ void networkAccess::finished( networkAccess::Opts str ) const
 
 			utility::setPermissions( str.file.handle() ) ;
 
-			engine.updateCmdPath( str.exeBinPath ) ;
+			engine.updateCmdPath( m_ctx.logger(),str.exeBinPath ) ;
 
 			auto m = str.showVinfo ;
 			m.setAfterDownloading = true ;
@@ -600,7 +618,7 @@ void networkAccess::extractArchiveOuput( networkAccess::Opts opts,
 
 			engine.renameArchiveFolder( opts.tempPath ) ;
 
-			auto exe = engine.updateCmdPath( opts.tempPath ) ;
+			auto exe = engine.updateCmdPath( m_ctx.logger(),opts.tempPath ) ;
 
 			QFile f( exe ) ;
 

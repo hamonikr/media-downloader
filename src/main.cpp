@@ -31,11 +31,12 @@ public:
 	{
 		QApplication& app ;
 		settings& Settings ;
-		const QStringList& args ;
+		const engines::enginePaths& ePaths ;
+		const utility::cliArguments& cargs ;
 	};
 	myApp( const myApp::args& args ) :
 		m_traslator( args.Settings,args.app ),
-		m_app( args.app,args.Settings,m_traslator,args.args )
+		m_app( args.app,args.Settings,m_traslator,args.ePaths,args.cargs )
 	{
 	}
 	void start( const QByteArray& e )
@@ -67,9 +68,12 @@ int main( int argc,char * argv[] )
 
 	settings settings( cargs ) ;
 
-	if( utility::startedUpdatedVersion( settings,cargs ) ){
+	if( utility::platformIsWindows() ){
 
-		return 0 ;
+		if( utility::startedUpdatedVersion( settings,cargs ) ){
+
+			return 0 ;
+		}
 	}
 
 	QApplication mqApp( argc,argv ) ;
@@ -78,7 +82,7 @@ int main( int argc,char * argv[] )
 
 	settings.setTheme( mqApp,paths.themePath() ) ;
 
-	auto args = mqApp.arguments() ;
+	const auto& args = cargs.arguments() ;
 
 	if( tests::test_engine( args,mqApp ) ){
 
@@ -87,19 +91,21 @@ int main( int argc,char * argv[] )
 
 	auto spath = paths.socketPath() ;
 
-	utility::arguments opts( args ) ;
-
 	QJsonObject jsonArgs ;
 
-	jsonArgs.insert( "-u",opts.hasValue( "-u" ) ) ;
-	jsonArgs.insert( "-a",opts.hasOption( "-a" ) ) ;
-	jsonArgs.insert( "-s",opts.hasOption( "-s" ) ) ;
+	jsonArgs.insert( "-a",cargs.contains( "-a" ) ) ;
+
+	jsonArgs.insert( "-e",cargs.contains( "-e" ) ) ;
+
+	jsonArgs.insert( "-u",cargs.value( "-u" ) ) ;
+
+	jsonArgs.insert( "--proxy",cargs.value( "--proxy" ) ) ;
 
 	auto json = QJsonDocument( jsonArgs ).toJson( QJsonDocument::Indented ) ;
 
-	utils::app::appInfo< myApp,myApp::args > m( { mqApp,settings,args },spath,mqApp,json ) ;
+	utils::app::appInfo< myApp,myApp::args > m( { mqApp,settings,paths,cargs },spath,mqApp,json ) ;
 
-	if( opts.hasOption( "-s" ) || !settings.singleInstance() ){
+	if( cargs.contains( "-s" ) || !settings.singleInstance() ){
 
 		return utils::app::runMultiInstances( std::move( m ) ) ;
 	}else{

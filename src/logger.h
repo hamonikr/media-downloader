@@ -243,6 +243,27 @@ public:
 			{
 				return m_array[ m ] ;
 			}
+			template< typename Function,
+				  typename std::enable_if< std::is_void< util::types::result_of< Function,QByteArray > >::value,int >::type = 0 >
+			void forEach( Function function ) const
+			{
+				for( const auto& it : m_array ){
+
+					function( it ) ;
+				}
+			}
+			template< typename Function,
+				  typename std::enable_if< std::is_same< util::types::result_of< Function,QByteArray >,bool >::value,int >::type = 0 >
+			void forEach( Function function ) const
+			{
+				for( const auto& it : m_array ){
+
+					if( function( it ) ){
+
+						break ;
+					}
+				}
+			}
 		private:
 			class ByteArray
 			{
@@ -287,45 +308,14 @@ public:
 		{
 			return m_processOutputs.rbegin()->entries().rbegin()->progressLine() ;
 		}
-		QByteArray toString() const
-		{
-			if( this->isNotEmpty() ){
-
-				QByteArray m ;
-
-				for( const auto& it : m_processOutputs ){
-
-					for( const auto& xt : it.entries() ){
-
-						m += xt.text() + "\n" ;
-					}
-				}
-
-				m.truncate( m.size() - 1 ) ;
-
-				return m ;
-			}else{
-				return {} ;
-			}
-		}
+		QByteArray join( const QByteArray& joiner ) const ;
 		QByteArray toLine() const
 		{
-			if( this->isNotEmpty() ){
-
-				QByteArray m ;
-
-				for( const auto& it : m_processOutputs ){
-
-					for( const auto& xt : it.entries() ){
-
-						m += xt.text() ;
-					}
-				}
-
-				return m ;
-			}else{
-				return {} ;
-			}
+			return this->join( "" ) ;
+		}
+		QByteArray toLines() const
+		{
+			return this->join( "\n" ) ;
 		}
 		void removeExtraLogs() ;
 		bool removeFirstFinished() ;
@@ -411,17 +401,8 @@ public:
 					m_filePath = m.toUtf8() ;
 				}
 			}
-			double ffmpegDuration() const
-			{
-				return m_ffmpegDuration ;
-			}
-			void setFfmpegDuration( double s )
-			{
-				m_ffmpegDuration = s ;
-			}
 		private:
 			QByteArray m_filePath ;
-			double m_ffmpegDuration = 0 ;
 		};
 
 		YtDlpData& ytDlpData()
@@ -442,9 +423,13 @@ public:
 			{
 				return m_size ;
 			}
-			void size( qint64 s )
+			void addToSize( qint64 s )
 			{
 				m_size += s ;
+			}
+			void reset()
+			{
+				m_size = 0 ;
 			}
 			const QByteArray& fileName() const
 			{
@@ -469,83 +454,6 @@ public:
 		const SvtData& svtData() const
 		{
 			return m_svtData ;
-		}
-
-		class LuxHeader
-		{
-		public:
-			LuxHeader()
-			{
-			}
-			LuxHeader( QByteArray w,QByteArray t,QByteArray ss,qint64 s ) :
-				m_webSite( std::move( w ) ),
-				m_title( std::move( t ) ),
-				m_fileSizeString( std::move( ss ) ),
-				m_fileSizeInt( s )
-			{
-			}
-			LuxHeader move()
-			{
-				return std::move( *this ) ;
-			}
-			bool invalid() const
-			{
-				return m_title.isEmpty() ;
-			}
-			const QByteArray& webSite() const
-			{
-				return m_webSite ;
-			}
-			const QByteArray& title() const
-			{
-				return m_title ;
-			}
-			const QByteArray& fileSize() const
-			{
-				return m_fileSizeString ;
-			}
-			qint64 fileSizeInt() const
-			{
-				return m_fileSizeInt ;
-			}
-			const QByteArray& allData() const
-			{
-				return m_allData ;
-			}
-			void addData( const QByteArray& e )
-			{
-				m_allData += e ;
-			}
-			const QByteArray& fileSize()
-			{
-				return m_fileSizeString ;
-			}
-			qint64 fileSizeInt()
-			{
-				return m_fileSizeInt ;
-			}
-		private:
-			QByteArray m_webSite ;
-			QByteArray m_title ;
-			QByteArray m_fileSizeString ;
-			QByteArray m_allData ;
-			qint64 m_fileSizeInt = 0 ;
-		};
-		void setLuxHeader( LuxHeader h )
-		{
-			m_luxHeader = h.move() ;
-		}
-		void luxHeaderUpdateData( const QByteArray& e )
-		{
-			m_luxHeader.addData( e ) ;
-		}
-		const LuxHeader& luxHeader() const
-		{
-			return m_luxHeader ;
-		}
-		const LuxHeader& luxHeader()
-		{
-			return m_luxHeader ;
 		}
 	private:
 		bool doneDownloadingText( const QByteArray& data ) ;
@@ -588,7 +496,6 @@ public:
 		std::list< Logger::Data::processOutput > m_processOutputs ;
 		bool m_mainLogger ;
 		YtDlpData m_ytDlpData ;
-		LuxHeader m_luxHeader ;
 		SvtData m_svtData ;
 	} ;
 

@@ -18,9 +18,11 @@
  */
 
 #include "tabmanager.h"
+#include "proxy.h"
 
 #include <QMimeData>
 #include <QClipboard>
+#include <QDateTime>
 
 tabManager::tabManager( settings& s,
 			translator& t,
@@ -30,9 +32,9 @@ tabManager::tabManager( settings& s,
 			QWidget& w,
 			MainWindow& mw,
 			const QString& appName,
-			QString debug ) :
+			utility::printOutPut& op ) :
 	m_currentTab( s.tabNumber() ),
-	m_ctx( s,t,ui,w,mw,l,e,*this,appName,std::move( debug ) ),
+	m_ctx( s,t,ui,w,mw,l,e,*this,appName,op ),
 	m_about( m_ctx ),
 	m_configure( m_ctx ),
 	m_basicdownloader( m_ctx ),
@@ -40,36 +42,14 @@ tabManager::tabManager( settings& s,
 	m_playlistdownloader( m_ctx ),
 	m_library( m_ctx )
 {
-	auto m = QApplication::clipboard() ;
+	qRegisterMetaType< QClipboard::Mode >() ;
 
-	if( m ){
+	m_clipboard = QApplication::clipboard() ;
 
-		QObject::connect( m,&QClipboard::changed,[ this,m ]( QClipboard::Mode mode ){
+	if( m_clipboard ){
 
-			if( mode != QClipboard::Mode::Clipboard ){
-
-				return ;
-			}
-
-			auto s = m->mimeData() ;
-
-			if( s ){
-
-				auto e = m->mimeData() ;
-
-				if( e->hasText() ){
-
-					auto txt = e->text() ;
-
-					if( txt.startsWith( "http" ) ){
-
-						m_basicdownloader.clipboardData( txt ) ;
-						m_batchdownloader.clipboardData( txt ) ;
-						m_playlistdownloader.clipboardData( txt ) ;
-					}
-				}
-			}
-		} ) ;
+		auto m = Qt::QueuedConnection ;
+		QObject::connect( m_clipboard,&QClipboard::changed,this,&tabManager::clipboardEvent,m ) ;
 	}
 
 	const auto& engines = m_ctx.Engines().getEngines() ;
@@ -175,11 +155,101 @@ void tabManager::setDefaultEngines()
 	m_configure.updateEnginesList( s ) ;
 }
 
-tabManager& tabManager::gotEvent( const QByteArray& e )
+void tabManager::setProxy( const settings::proxySettings& proxy,const settings::proxySettings::type& m )
 {
-	m_basicdownloader.gotEvent( e ) ;
-	m_batchdownloader.gotEvent( e ) ;
-	m_playlistdownloader.gotEvent( e ) ;
+	proxy::set( m_ctx,m_firstTime,proxy.proxyAddress(),m ) ;
+}
+
+void tabManager::clipboardEvent( QClipboard::Mode mode )
+{
+	if( mode == QClipboard::Mode::Clipboard ){
+
+		if( utility::platformIsWindows() ){
+
+			this->bgThreadClipboardHandler() ;
+		}else{
+			this->mainThreadClipboardHandler() ;
+		}
+	}
+}
+
+void tabManager::mainThreadClipboardHandler()
+{
+	auto e = m_clipboard->mimeData() ;
+
+	if( e && e->hasText() ){
+
+		auto m = e->text() ;
+
+		if( m.startsWith( "http" ) ){
+
+			m_basicdownloader.clipboardData( m ) ;
+			m_batchdownloader.clipboardData( m ) ;
+			m_playlistdownloader.clipboardData( m ) ;
+		}
+	}
+}
+
+void tabManager::bgThreadClipboardHandler()
+{
+	utils::qthread::run( [ this ](){
+
+		return utility::windowsGetClipBoardText( m_ctx ) ;
+
+	},[ then = QDateTime::currentMSecsSinceEpoch(),this ]( const QString& e ){
+
+		auto now = QDateTime::currentMSecsSinceEpoch() ;
+
+		if( now - then <= 10000 ){
+
+			if( e.startsWith( "http" ) ){
+
+				m_basicdownloader.clipboardData( e ) ;
+				m_batchdownloader.clipboardData( e ) ;
+				m_playlistdownloader.clipboardData( e ) ;
+			}
+		}else{
+			auto a = QObject::tr( "Warning: Skipping Clipboard Content" ) ;
+			m_ctx.logger().add( a,utility::concurrentID() ) ;
+		}
+	} ) ;
+}
+
+tabManager& tabManager::gotEvent( const QByteArray& s )
+{
+	QJsonParseError err ;
+	auto jsonDoc = QJsonDocument::fromJson( s,&err ) ;
+
+	if( err.error == QJsonParseError::NoError ){
+
+		auto e = jsonDoc.object() ;
+
+		if( m_firstTime ){
+
+			auto m = e.value( "--proxy" ).toString() ;
+
+			if( m.isEmpty() ){
+
+				auto s = m_ctx.Settings().getProxySettings() ;
+				auto t = s.types() ;
+
+				if( !t.none() ){
+
+					this->setProxy( s,t ) ;
+				}else{
+					m_ctx.setNetworkProxy( m,m_firstTime ) ;
+				}
+			}else{
+				m_ctx.setNetworkProxy( m,m_firstTime ) ;
+			}
+
+			m_firstTime = false ;
+		}
+
+		m_basicdownloader.gotEvent( e ) ;
+		m_batchdownloader.gotEvent( e ) ;
+		m_playlistdownloader.gotEvent( e ) ;
+	}
 
 	return *this ;
 }

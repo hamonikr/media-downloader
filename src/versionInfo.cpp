@@ -61,25 +61,33 @@ void versionInfo::done( versionInfo::extensionVersionInfo vInfo ) const
 
 	QStringList mm ;
 
-	QString s = "%1: %2\n%3: %4\n%5: %6\n" ;
-
 	auto nt = QObject::tr( "Engine Name" ) ;
 	auto it = QObject::tr( "Installed Version" ) ;
 	auto lt = QObject::tr( "Latest Version" ) ;
 
 	vInfo.report( [ & ]( const QString& name,const QString& iv,const QString& lv ){
 
-		mm.append( name ) ;
-		m.append( s.arg( nt,name,it,iv,lt,lv ) ) ;
+		m.append( name ) ;
+
+		mm.append( nt + ": " + name ) ;
+		mm.append( it + ": " + iv ) ;
+		mm.append( lt + ": " + lv ) ;
 	} ) ;
 
 	if( m.size() ){
 
-		m_ctx.mainWindow().setTitle( QObject::tr( "There Is An Update For " ) + mm.join( ", " ) ) ;
+		m_ctx.mainWindow().setTitle( QObject::tr( "There Is An Update For " ) + m.join( ", " ) ) ;
 
-		auto s = QObject::tr( "Update Found" ) ;
+		auto id = utility::sequentialID() ;
 
-		m_ctx.logger().add( s + "\n" + m.join( "\n" ),utility::sequentialID() ) ;
+		auto& logger = m_ctx.logger() ;
+
+		logger.add( QObject::tr( "Update Found" ),id ) ;
+
+		for( const auto& it : util::asConst( mm ) ){
+
+			logger.add( it,id ) ;
+		}
 	}
 }
 
@@ -177,7 +185,7 @@ void versionInfo::checkForEnginesUpdates( versionInfo::extensionVersionInfo vInf
 		}
 	}
 
-	m_network.get( url,[ this,vInfo = vInfo.move() ]( const utils::network::reply& reply ){
+	m_network.get( url,[ this,vInfo = vInfo.move() ]( const utils::network::reply& reply )mutable{
 
 		this->checkForEnginesUpdates( vInfo.move(),reply ) ;
 	} ) ;
@@ -432,23 +440,25 @@ void versionInfo::printVersion( versionInfo::printVinfo vInfo ) const
 
 	engines::engine::exeArgs::cmd cmd( engine.exePath(),{ engine.versionArgument() } ) ;
 
-	if( !m_ctx.debug().isEmpty() ){
+	QString exe ;
 
-		auto exe = "cmd: \"" + cmd.exe() + "\"" ;
+	if( m_ctx.debug() ){
+
+		exe = "\"" + cmd.exe() + "\"" ;
 
 		for( const auto& it : cmd.args() ){
 
 			exe += " \"" + it + "\"" ;
 		}
 
-		m_ctx.logger().add( exe,id ) ;
+		m_ctx.logger().add( "cmd: " + exe,id ) ;
 	}
 
 	auto mm = QProcess::ProcessChannelMode::MergedChannels ;
 
 	utility::setPermissions( cmd.exe() ) ;
 
-	versionInfo::pVInfo v{ vInfo.move(),id } ;
+	versionInfo::pVInfo v{ vInfo.move(),id,exe } ;
 
 	utils::qprocess::run( cmd.exe(),cmd.args(),mm,v.move(),this,&versionInfo::printVersionP ) ;
 }
@@ -477,6 +487,32 @@ void versionInfo::printVersionP( versionInfo::pVInfo pvInfo,const utils::qproces
 		this->log( m.arg( engine.name() ),pvInfo.id() ) ;
 
 		engine.setBroken() ;
+
+		auto& debug = m_ctx.debug() ;
+
+		if( debug ){
+
+			auto exitCode   = "Error Code: " + QString::number( r.exitCode ) ;
+
+			QString exitStatus ;
+
+			auto mm = r.exitStatus ;
+
+			if( mm == utils::qprocess::outPut::ExitStatus::NormalExit ){
+
+				exitStatus = "Exit Status: Normal" ;
+
+			}else if( mm == utils::qprocess::outPut::ExitStatus::Crashed ){
+
+				exitStatus = "Exit Status: Crashed" ;
+			}else{
+				exitStatus = "Exit Status: Failed To Start" ;
+			}
+			
+			QString m = "Cmd:%1\n%2\n%3\nStdOut:\n%4\n-----\nStdError:\n%5" ;
+
+			debug( m.arg( pvInfo.cmd(),exitCode,exitStatus,r.stdOut,r.stdError ).toUtf8() ) ;
+		}
 	}
 
 	this->done( pvInfo.movePrintVinfo() ) ;
@@ -496,7 +532,7 @@ void versionInfo::printVersionN( versionInfo::pVInfo pvInfo,const utils::network
 
 	if( version.valid() && installedVersion.valid() && installedVersion < version ){
 
-		auto m = versionOnline.stringVersion ;
+		const auto& m = versionOnline.stringVersion ;
 
 		this->log( QObject::tr( "Newest Version Is %1, Updating" ).arg( m ),pvInfo.id() ) ;
 

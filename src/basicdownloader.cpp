@@ -30,7 +30,6 @@
 basicdownloader::basicdownloader( const Context& ctx ) :
 	m_ctx( ctx ),
 	m_settings( m_ctx.Settings() ),
-	m_debug( ctx.debug() ),
 	m_ui( m_ctx.Ui() ),
 	m_tabManager( m_ctx.TabManager() ),
 	m_tableList( *m_ui.bdTableWidgetList,m_ctx.mainWidget().font() ),
@@ -251,7 +250,7 @@ void basicdownloader::listRequested( const QByteArray& a,int id )
 
 		const auto& engine = m_ctx.Engines().defaultEngine( m,id ) ;
 
-		auto ee = engine.mediaProperties( a ) ;
+		auto ee = engine.mediaProperties( m_ctx.logger(),a ) ;
 
 		if( ee.size() ){
 
@@ -277,14 +276,27 @@ void basicdownloader::list()
 
 	m_optionsList.clear() ;
 
-	m_ui.lineEditOptions->clear() ;
-
 	auto url = m_ui.lineEditURL->text() ;
 
 	const auto& backend = this->defaultEngine() ;
 
-	auto args = backend.engine.defaultListCmdOptions() ;
+	const auto& engine = backend.engine ;
+
+	auto args = engine.defaultListCmdOptions() ;
 	args.append( url.split( ' ' ) ) ;
+
+	auto mm = m_ui.lineEditOptions->text() ;
+
+	utility::addToListOptionsFromsDownload( args,mm,m_ctx,engine ) ;
+
+	auto cookiePath = m_settings.cookieFilePath( engine.name() ) ;
+	const auto& ca = engine.cookieArgument() ;
+
+	if( !cookiePath.isEmpty() && !ca.isEmpty() ){
+
+		args.append( ca ) ;
+		args.append( cookiePath ) ;
+	}
 
 	this->run( backend,args,"",true ) ;
 }
@@ -326,8 +338,6 @@ void basicdownloader::download( const QString& url )
 	auto s = utility::setDownloadOptions( engine.engine,m_bogusTable,0 ).downloadOptions ;
 
 	auto mm = m_ui.lineEditOptions->text() ;
-
-	qDebug() << mm ;
 
 	m_settings.addOptionsHistory( mm,settings::tabName::basic ) ;
 
@@ -374,6 +384,15 @@ void basicdownloader::download( const basicdownloader::engine& engine,
 						      {},
 						      m_ctx } ) ;
 
+		auto cookiePath = m_settings.cookieFilePath( engine.engine.name() ) ;
+		const auto& ca = engine.engine.cookieArgument() ;
+
+		if( !cookiePath.isEmpty() && !ca.isEmpty() ){
+
+			opts.append( ca ) ;
+			opts.append( cookiePath ) ;
+		}
+
 		this->run( engine,opts,args.credentials(),false ) ;
 	} ) ;
 }
@@ -386,7 +405,7 @@ void basicdownloader::run( const basicdownloader::engine& eng,
 	auto id = eng.id ;
 	const auto& engine = eng.engine ;
 
-	auto functions = utility::OptionsFunctions( [ this,id ]( const utility::ProcessExitState&,const QByteArray& args ){
+	auto functions = utility::OptionsFunctions( [ this,id ]( const engines::ProcessExitState&,const QByteArray& args ){
 
 			this->listRequested( args,id ) ;
 
@@ -396,7 +415,7 @@ void basicdownloader::run( const basicdownloader::engine& eng,
 
 			m_ui.pbCancel->setEnabled( true ) ;
 
-		},[ this ]( utility::ProcessExitState m,const basicdownloader::opts& opts ){
+		},[ this ]( engines::ProcessExitState m,const basicdownloader::opts& opts ){
 
 			opts.ctx.TabManager().enableAll() ;
 
@@ -415,7 +434,7 @@ void basicdownloader::run( const basicdownloader::engine& eng,
 		}
 	 ) ;
 
-	basicdownloader::opts opts{ engine,m_bogusTable,m_ctx,m_debug,list_requested,-1 } ;
+	basicdownloader::opts opts{ engine,m_bogusTable,m_ctx,m_ctx.debug(),list_requested,-1 } ;
 
 	auto oopts  = basicdownloader::make_options( engine,std::move( opts ),std::move( functions ) ) ;
 	auto logger = LoggerWrapper( m_ctx.logger(),id ) ;
@@ -494,6 +513,6 @@ void basicdownloader::exiting()
 {
 }
 
-void basicdownloader::gotEvent( const QByteArray& )
+void basicdownloader::gotEvent( const QJsonObject& )
 {
 }

@@ -26,91 +26,52 @@
 #include "../networkAccess.h"
 #include "../utility.h"
 
+#include "../configure.h"
+
 #include "aria2c.h"
 
 const char * yt_dlp::testYtDlp()
 {
 	return R"R([youtube] Extracting URL: https://www.youtube.com/watch?v=tn2USd5KeVM
-[youtube] Extracting URL: https://www.youtube.com/watch?v=tn2USd5KeVM
-[youtube] tn2USd5KeVM: Downloading webpage
 [youtube] tn2USd5KeVM: Downloading webpage
 [youtube] tn2USd5KeVM: Downloading android player API JSON
-[youtube] tn2USd5KeVM: Downloading android player API JSON
-[info] tn2USd5KeVM: Downloading 1 format(s): 242+250
 [info] tn2USd5KeVM: Downloading 1 format(s): 242+250
 [dashsegments] Total fragments: 1
 [download] Destination: For You, I Will-tn2USd5KeVM.f242.webm
-[dashsegments] Total fragments: 1
-[download] Destination: For You, I Will-tn2USd5KeVM.f242.webm
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1024","ETA":"801","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"3748.8989290898444","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1024","ETA":"801","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"3748.8989290898444","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3072","ETA":"270","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"11100.353549598756","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3072","ETA":"270","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"11100.353549598756","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"7168","ETA":"117","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"25553.916984198353","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"7168","ETA":"117","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"25553.916984198353","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"15360","ETA":"55","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"54191.706305212036","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"15360","ETA":"55","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"54191.706305212036","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"31744","ETA":"28","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"105082.03807274862","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"31744","ETA":"28","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"105082.03807274862","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"64512","ETA":"15","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"186530.45246344642","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"64512","ETA":"15","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"186530.45246344642","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"130048","ETA":"9","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"302596.7195118163","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"130048","ETA":"9","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"302596.7195118163","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"261120","ETA":"5","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"513690.6226527927","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"261120","ETA":"5","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"513690.6226527927","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"523264","ETA":"3","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"759468.0671639751","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"523264","ETA":"3","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"759468.0671639751","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1047552","ETA":"2","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"944726.817633977","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1047552","ETA":"2","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"944726.817633977","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"2096128","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1130690.3381772884","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"2096128","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1130690.3381772884","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1050349.8707767602","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1050349.8707767602","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1048710.8298590486","fragment_index":"1","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1048710.8298590486","fragment_index":"1","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"3006209","speed":"1045432.6172785787","fragment_index":"NA","fragment_count":"NA"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"3006209","speed":"1045432.6172785787","fragment_index":"NA","fragment_count":"NA"}
 [dashsegments] Total fragments: 1
 [download] Destination: For You, I Will-tn2USd5KeVM.f250.webm
-[dashsegments] Total fragments: 1
-[download] Destination: For You, I Will-tn2USd5KeVM.f250.webm
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"1024","ETA":"198","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"4036.8055100230085","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"1024","ETA":"198","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"4036.8055100230085","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"3072","ETA":"66","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"11936.322350783255","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"3072","ETA":"66","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"11936.322350783255","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"7168","ETA":"28","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"27459.17039337285","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"7168","ETA":"28","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"27459.17039337285","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"15360","ETA":"13","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"57882.20012434548","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"15360","ETA":"13","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"57882.20012434548","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"31744","ETA":"6","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"112194.0950090543","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"31744","ETA":"6","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"112194.0950090543","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"64512","ETA":"3","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"193614.70508961147","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"64512","ETA":"3","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"193614.70508961147","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"130048","ETA":"2","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"324906.7034416374","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"130048","ETA":"2","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"324906.7034416374","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"261120","ETA":"1","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"469521.50453802437","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"261120","ETA":"1","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"469521.50453802437","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"523264","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"679335.6383840272","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"523264","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"679335.6383840272","fragment_index":"0","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"798716.483346946","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"798716.483346946","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"795310.8810879494","fragment_index":"1","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"795310.8810879494","fragment_index":"1","fragment_count":"1"}
 [download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"801810","speed":"791098.3168199448","fragment_index":"NA","fragment_count":"NA"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"801810","speed":"791098.3168199448","fragment_index":"NA","fragment_count":"NA"}
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 [postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 [Merger] Merging formats into "For You, I Will-tn2USd5KeVM.webm"
-[Merger] Merging formats into "For You, I Will-tn2USd5KeVM.webm"
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 [postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 Deleting original file For You, I Will-tn2USd5KeVM.f242.webm (pass -k to keep)
-Deleting original file For You, I Will-tn2USd5KeVM.f250.webm (pass -k to keep)
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 [postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 Deleting original file For You, I Will-tn2USd5KeVM.f242.webm (pass -k to keep)
-Deleting original file For You, I Will-tn2USd5KeVM.f250.webm (pass -k to keep)
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
 [postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"})R" ;
 }
 
@@ -558,14 +519,29 @@ static bool _youtube_dl( const engines::engine&,const QByteArray& e )
 	return e.startsWith( "[download]" ) && e.contains( "ETA" ) ;
 }
 
+static bool _fragment_output( const QByteArray& e )
+{
+	return utils::misc::startsWithAny( e,"[https @ ","[hls @ ","Opening '" ) ;
+}
+
 static bool _ffmpeg( const engines::engine&,const QByteArray& e )
 {
-	return e.startsWith( "frame=" ) || e.startsWith( "size=" ) ;
+	if( _fragment_output( e ) ){
+
+		return true ;
+	}else{
+		return utils::misc::startsWithAny( e,"frame=","size=" ) ;
+	}
+}
+
+static bool _aria2c( const engines::engine& s,const QByteArray& e )
+{
+	return aria2c::meetCondition( s,e ) ;
 }
 
 static bool _ffmpeg_internal( const engines::engine&,const QByteArray& e )
 {
-	return e.contains( "Frame: " ) && e.contains( ", Completed: " ) ;
+	return e.contains( " / ~" ) || e.startsWith( "Frame: " ) ;
 }
 
 static bool _shouldNotGetCalled( const engines::engine&,const QByteArray& )
@@ -615,9 +591,9 @@ public:
 
 			m_function = _ffmpeg_internal ;
 
-		}else if( aria2c::meetCondition( m_engine,e ) ){
+		}else if( _aria2c( m_engine,e ) ){
 
-			m_function = aria2c::meetCondition ;
+			m_function = _aria2c ;
 		}else{
 			m_function = _shouldNotGetCalled ;
 
@@ -717,23 +693,28 @@ private:
 	}
 	double toSeconds( const QByteArray& s ) const
 	{
-		auto mm = util::split( util::split( s,'.' )[ 0 ],':' ) ;
+		if( s.isEmpty() ){
 
-		if( mm.size() > 2 ){
-
-			auto h  = mm[ 0 ].toDouble() ;
-			auto m  = mm[ 1 ].toDouble() ;
-			auto ss = mm[ 2 ].toDouble() ;
-
-			ss += m * 60 ;
-			ss += h * 60 * 60 ;
-
-			return ss ;
-		}else{
 			return 0 ;
+		}else{
+			auto mm = util::split( util::split( s,'.' )[ 0 ],':' ) ;
+
+			if( mm.size() > 2 ){
+
+				auto h  = mm[ 0 ].toDouble() ;
+				auto m  = mm[ 1 ].toDouble() ;
+				auto ss = mm[ 2 ].toDouble() ;
+
+				ss += m * 60 ;
+				ss += h * 60 * 60 ;
+
+				return ss ;
+			}else{
+				return 0 ;
+			}
 		}
 	}
-	bool foundDuration( Logger::Data& s,const QByteArray& e ) const
+	QByteArray duration( const QByteArray& e ) const
 	{
 		if( e.contains( "  Duration: " ) ){
 
@@ -745,13 +726,13 @@ private:
 
 					auto mm = m[ a + 1 ].replace( ",","" ) ;
 
-					s.ytDlpData().setFfmpegDuration( this->toSeconds( mm ) ) ;
+					return mm ;
 				}
 			}
 
-			return true ;
+			return {} ;
 		}else{
-			return false ;
+			return {} ;
 		}
 	}
 	QString getOption( const QList< QByteArray >& m,const char * opt ) const
@@ -782,53 +763,100 @@ private:
 
 		return "NA" ;
 	}
+	qint64 size( QByteArray e ) const
+	{
+		return e.replace( "kB","" ).toLongLong() * 1024 ;
+	}
 	QByteArray outPutFfmpeg( const filterOutPut::args& args ) const
 	{
-		const auto& data = args.outPut ;
-		auto& s          = args.data ;
+		const auto& data   = args.outPut ;
+		auto& s            = args.data ;
+		const auto& locale = args.locale ;
 
-		if( s.ytDlpData().ffmpegDuration() == 0 ){
+		double totalTime = 0 ;
 
-			s.forEach( [ & ]( int,const QByteArray& e ){
+		if( _fragment_output( data ) ){
 
-				return this->foundDuration( s,e ) ;
-			} ) ;
+			return args.data.lastText() ;
 		}
+
+		QByteArray totalTimeString ;
+
+		s.forEach( [ & ]( int,const QByteArray& e ){
+
+			auto d = this->duration( e ) ;
+
+			if( d.isEmpty() ){
+
+				return false ;
+			}else{
+				totalTime = this->toSeconds( d ) ;
+
+				totalTimeString = std::move( d ) ;
+
+				return true ;
+			}
+		} ) ;
 
 		auto m = util::split( data,' ' ) ;
 
-		auto frame   = this->getOption( m,"frame=" ) ;
-		auto fps     = this->getOption( m,"fps=" ) ;
-		auto time    = this->getOption( m,"time=" ) ;
-		auto bitrate = this->getOption( m,"bitrate=" ) ;
-		auto speed   = this->getOption( m,"speed=" ) ;
-		auto size    = this->getOption( m,"size=" ) ;
+		auto currentTimeString = this->getOption( m,"time=" ) ;
+		auto size = this->getOption( m,"size=" ) ;
 
 		if( size == "NA" ){
 
 			size = this->getOption( m,"Lsize=" ) ;
 		}
 
-		auto e = this->toSeconds( time.toUtf8() ) ;
+		auto currentTime = this->toSeconds( currentTimeString.toUtf8() ) ;
 
-		QString completed = "NA" ;
+		auto currentSize = this->size( size.toUtf8() ) ;
 
-		if( s.ytDlpData().ffmpegDuration() != 0 ){
+		if( currentTime == 0 || totalTime == 0 || currentSize == 0 || size == "NA" ){
 
-			auto r = e * 100 / s.ytDlpData().ffmpegDuration() ;
+			auto frame   = this->getOption( m,"frame=" ) ;
+			auto fps     = this->getOption( m,"fps=" ) ;
+			auto bitrate = this->getOption( m,"bitrate=" ) ;
+			auto speed   = this->getOption( m,"speed=" ) ;
 
-			completed = QString::number( r,'f',2 ) ;
+			QString result = "Frame: %1, Fps: %2, Size: %3, Bitrate: %4, Speed: %5" ;
+
+			return result.arg( frame,fps,size,bitrate,speed ).toUtf8() ;
+		}else{
+			auto r = currentTime * 100 / totalTime ;
+
+			auto totalSize = totalTime * currentSize / currentTime ;
+
+			auto totalSizeString = locale.formattedDataSize( totalSize ) ;
+			auto currentSizeString = locale.formattedDataSize( currentSize ) ;
+
+			auto completed = QString::number( r,'f',2 ) ;
 
 			if( completed == "100.00" ){
 
 				completed = "100" ;
 			}
+
+			auto frame   = this->getOption( m,"frame=" ) ;
+			auto fps     = this->getOption( m,"fps=" ) ;
+			auto bitrate = this->getOption( m,"bitrate=" ) ;
+			auto speed   = this->getOption( m,"speed=" ) ;
+
+			QString a1 = "%1 / ~%2 (%3%) at %4" ;
+			auto a = a1.arg( currentSizeString,totalSizeString,completed,speed ).toUtf8() ;
+
+			QString b1 = "Frame: %1, Fps: %2, Bitrate: %3" ;
+			auto b = b1.arg( frame,fps,bitrate ).toUtf8() ;
+
+			if( s.mainLogger() ){
+
+				return a + ", " + b ;
+			}else{
+				return a + "\n" + b ;
+			}
 		}
-
-		QString result = "Frame: %1, Fps: %2, Size: %3\nBitrate: %4, Speed: %5, Completed: %6%" ;
-
-		return result.arg( frame,fps,size,bitrate,speed,completed ).toUtf8() ;
 	}
+
 	mutable QByteArray m_tmp ;
 	const engines::engine& m_engine ;
 	mutable bool( *m_function )( const engines::engine&,const QByteArray& ) ;
@@ -839,29 +867,30 @@ engines::engine::functions::FilterOutPut yt_dlp::filterOutput()
 	return { util::types::type_identity< ytDlpFilter >(),m_engine } ;
 }
 
-std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( const QByteArray& e )
+std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QByteArray& e )
 {
 	const auto& name = m_engine.name() ;
 
 	if( name == "youtube-dl" ){
 
-		return engines::engine::functions::mediaProperties( e ) ;
+		return engines::engine::functions::mediaProperties( l,e ) ;
 	}else{
-
 		QJsonParseError err ;
 
 		auto json = QJsonDocument::fromJson( e,&err ) ;
 
 		if( err.error == QJsonParseError::NoError ){
 
-			return this->mediaProperties( json.array() ) ;
+			return this->mediaProperties( l,json.array() ) ;
 		}else{
+			utility::failedToParseJsonData( l,err ) ;
+
 			return {} ;
 		}
 	}
 }
 
-std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( const QJsonArray& array )
+std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QJsonArray& array )
 {
 	if( array.isEmpty() ){
 
@@ -870,7 +899,7 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( co
 
 	if( m_engine.name() == "youtube-dl" ){
 
-		return engines::engine::functions::mediaProperties( array ) ;
+		return engines::engine::functions::mediaProperties( l,array ) ;
 	}
 
 	std::vector< engines::engine::functions::mediaInfo > firstToShow ;
@@ -1105,6 +1134,12 @@ void yt_dlp::updateLocalOptions( QStringList& opts )
 	}
 }
 
+void yt_dlp::setProxySetting( QStringList& e,const QString& s )
+{
+	e.append( "--proxy" ) ;
+	e.append( s ) ;
+}
+
 void yt_dlp::setTextEncondig( const QString& args,QStringList& opts )
 {
 	const auto& e = engines::engine::functions::Settings().textEncoding() ;
@@ -1266,6 +1301,13 @@ void yt_dlp::updateDownLoadCmdOptions( const engines::engine::functions::updateO
 
 	engines::engine::functions::updateDownLoadCmdOptions( s ) ;
 
+	if( !s.ourOptions.contains( "-f" ) && !s.ourOptions.contains( "-S" ) ){
+
+		s.ourOptions.append( "-f" ) ;
+
+		s.ourOptions.append( configure::defaultDownloadOption() ) ;
+	}
+
 	if( m_likeYtdlp ){
 
 		this->appendCompatOption( s.ourOptions ) ;
@@ -1379,7 +1421,7 @@ const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
 
 				const auto& m = s.ytDlpData().filePath() ;
 
-				if( !s.isEmpty() ){
+				if( !m.isEmpty() ){
 
 					return m ;
 				}else{

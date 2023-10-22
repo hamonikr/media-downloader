@@ -45,14 +45,20 @@ static QString _configPath()
 #endif
 }
 
-bool settings::portableVersion()
+static QString _downloadLocation()
 {
-	return m_portableVersion ;
-}
+#if QT_VERSION >= QT_VERSION_CHECK( 5,6,0 )
+	auto s = QStandardPaths::standardLocations( QStandardPaths::DownloadLocation ) ;
 
-const QString& settings::runningUpdatedText()
-{
-	return m_runningUpdated ;
+	if( s.isEmpty() ){
+
+		return QDir::homePath() + "/Downloads" ;
+	}else{
+		return s.first() ;
+	}
+#else
+	return QDir::homePath() + "/Downloads" ;
+#endif
 }
 
 static QString _monitorClipboadUrl( settings::tabName e )
@@ -248,6 +254,21 @@ bool settings::checkForEnginesUpdates()
 	return m_settings.value( "CheckForEnginesUpdates" ).toBool() ;
 }
 
+bool settings::autoHideDownloadWhenCompleted()
+{
+	if( !m_settings.contains( "AutoHideDownloadWhenCompleted" ) ){
+
+		m_settings.setValue( "AutoHideDownloadWhenCompleted",false ) ;
+	}
+
+	return m_settings.value( "AutoHideDownloadWhenCompleted" ).toBool() ;
+}
+
+void settings::setAutoHideDownloadWhenCompleted( bool e )
+{
+	m_settings.setValue( "AutoHideDownloadWhenCompleted",e ) ;
+}
+
 int settings::textAlignment()
 {
 	if( !m_settings.contains( "MainTableTextAlignment" ) ){
@@ -343,48 +364,6 @@ static std::unique_ptr< QSettings > _set_config( const QString& path )
 	return std::make_unique< QSettings >( m,QSettings::IniFormat ) ;
 }
 
-static bool _portableVersionInit( const utility::cliArguments& args,
-				  QString& dataPath,
-				  QString& exePath,
-				  QString& exeOrgPath )
-{
-	if( utility::platformIsWindows() ){
-
-		exePath = utility::windowsApplicationDirPath() ;
-
-		exeOrgPath = args.originalPath() ;
-
-		if( exeOrgPath.isEmpty() ){
-
-			exeOrgPath = exePath ;
-		}
-
-		if( !args.dataPath().isEmpty() ){
-
-			dataPath = args.dataPath() ;
-
-			return args.portable() ;
-		}else{
-			auto a = exePath  + "/local" ;
-
-			if( QFile::exists( a ) ){
-
-				dataPath = a ;
-
-				return true ;
-			}else{
-				dataPath = _configPath() ;
-
-				return false ;
-			}
-		}
-	}else{
-		dataPath = _configPath() ;
-
-		return false ;
-	}
-}
-
 static std::unique_ptr< QSettings > _init( const QString& dataPath,bool portableVersion )
 {	
 	if( utility::platformIsWindows() ){
@@ -392,21 +371,22 @@ static std::unique_ptr< QSettings > _init( const QString& dataPath,bool portable
 		if( portableVersion ){
 
 			return _set_config( dataPath ) ;
+		}else{
+			return _set_config( _configPath() ) ;
 		}
+	}else{
+		auto path = _configPath() ;
 
-		auto appPath      = _configPath() ;
-		auto settingsPath = appPath + "/settings" ;
+		if( QFile::exists( path + "/settings/settings.ini" ) ){
 
-		if( QFile::exists( settingsPath ) ){
-
-			return _set_config( appPath ) ;
+			return _set_config( path ) ;
 		}else{
 			/*
-			 * Migrating from registry based config to text file config.
+			 * Migrating to .ini config file
 			 */
 			QSettings oldSettings( "media-downloader","media-downloader" ) ;
 
-			auto newSettings = _set_config( appPath ) ;
+			auto newSettings = _set_config( path ) ;
 
 			const auto keys = oldSettings.allKeys() ;
 
@@ -419,14 +399,12 @@ static std::unique_ptr< QSettings > _init( const QString& dataPath,bool portable
 
 			return newSettings ;
 		}
-	}else{
-		return std::make_unique< QSettings >( "media-downloader","media-downloader" ) ;
 	}
 }
 
 settings::settings( const utility::cliArguments& args ) :
-	m_portableVersion( _portableVersionInit( args,m_dataPath,m_exePath,m_exeOrgPath ) ),
-	m_settingsP( _init( m_dataPath,portableVersion() ) ),
+	m_options( args ),
+	m_settingsP( _init( m_options.dataPath(),m_options.portableVersion() ) ),
 	m_settings( *m_settingsP )
 
 {
@@ -442,14 +420,6 @@ settings::settings( const utility::cliArguments& args ) :
 	if( m != "1.0" ){
 
 		qputenv( "QT_SCALE_FACTOR",m ) ;
-	}
-
-	if( args.runningUpdated() ){
-
-		//const auto& m = args.originalVersion() ;
-		//const auto& mm = utility::runningVersionOfMediaDownloader() ;
-
-		//m_runningUpdated = QObject::tr( "Started As Version %1 And Now Running As Version %2" ).arg( m,mm ) ;
 	}
 }
 
@@ -493,9 +463,19 @@ size_t settings::maxConcurrentDownloads()
 	return static_cast< size_t >( m_settings.value( "MaxConcurrentDownloads" ).toInt() ) ;
 }
 
-const QString & settings::exeOriginalPath()
+const QString& settings::windowsOnly3rdPartyBinPath()
 {
-	return m_exeOrgPath ;
+	return m_options.windowsOnly3rdPartyBinPath() ;
+}
+
+const QString& settings::windowsOnlyExeBinPath()
+{
+	return m_options.m_exePath ;
+}
+
+const QString& settings::windowsOnlyDefaultPortableVersionDownloadFolder()
+{
+	return m_options.windowsOnlyDefaultPortableVersionDownloadFolder() ;
 }
 
 void settings::setMaxConcurrentDownloads( int s )
@@ -515,80 +495,78 @@ void settings::setDownloadFolder( const QString& m )
 	}
 }
 
-template< typename Function >
-static QString _downloadFolder( QSettings& settings,bool portableVersion,Function function )
+static QString _downloadFolder( QSettings& settings,const QString& defaultPath,Logger * logger )
 {
 	auto mediaDownloaderCWD = utility::stringConstants::mediaDownloaderCWD() ;
 
 	auto mediaDownloaderDefaultDownloadPath = utility::stringConstants::mediaDownloaderDefaultDownloadPath() ;
 
-	if( portableVersion ){
+	if( !settings.contains( "DownloadFolder" ) ){
 
-		if( settings.contains( "DownloadFolder" ) ){
+		settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
+	}
 
-			auto m = settings.value( "DownloadFolder" ).toString() ;
+	auto m = settings.value( "DownloadFolder" ).toString() ;
 
-			if( m.startsWith( mediaDownloaderCWD ) ){
+	if( m.startsWith( mediaDownloaderCWD ) ){
 
-				m.replace( mediaDownloaderCWD,QDir::currentPath() ) ;
+		m.replace( mediaDownloaderCWD,QDir::currentPath() ) ;
 
-				return m ;
-			}
+	}else if( m.startsWith( mediaDownloaderDefaultDownloadPath ) ){
 
-			if( m.startsWith( mediaDownloaderDefaultDownloadPath ) ){
+		m.replace( mediaDownloaderDefaultDownloadPath,defaultPath ) ;
+	}
 
-				m.replace( mediaDownloaderDefaultDownloadPath,QDir::currentPath() + "/Downloads" ) ;
-
-				return m ;
-			}
-
-			if( QFile::exists( m ) ){
-
-				return m ;
-			}else{
-				function( QObject::tr( "Resetting download folder to default" ) ) ;
-				settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
-				return QDir::currentPath() + "/Downloads" ;
-			}
-		}else{
-			settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
-			return QDir::currentPath() + "/Downloads" ;
-		}
-	}else{
-		if( !settings.contains( "DownloadFolder" ) ){
-
-			settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
-		}
-
-		auto m = settings.value( "DownloadFolder" ).toString() ;
-
-		if( m.startsWith( mediaDownloaderCWD ) ){
-
-			m.replace( mediaDownloaderCWD,QDir::currentPath() ) ;
-
-			return m ;
-		}
-
-		if( m.startsWith( mediaDownloaderDefaultDownloadPath ) ){
-
-			m.replace( mediaDownloaderDefaultDownloadPath,utility::homePath() ) ;
-		}
+	if( QFile::exists( m ) ){
 
 		return m ;
+	}else{
+		if( logger ){
+
+			auto id = utility::sequentialID() ;
+
+			auto s = utility::barLine() ;
+
+			logger->add( s,id ) ;
+
+			logger->add( QObject::tr( "Resetting download folder to default" ),id ) ;
+
+			logger->add( s,id ) ;
+		}
+
+		settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
+
+		QDir().mkpath( defaultPath ) ;
+
+		return defaultPath ;
+	}
+}
+
+QString settings::downloadFolder( Logger * logger )
+{
+	if( utility::platformIsWindows() ){
+
+		if( this->portableVersion() ){
+
+			const auto& dPath = this->windowsOnlyDefaultPortableVersionDownloadFolder() ;
+
+			return _downloadFolder( m_settings,dPath,logger ) ;
+		}else{
+			return _downloadFolder( m_settings,_downloadLocation(),logger ) ;
+		}
+	}else{
+		return _downloadFolder( m_settings,_downloadLocation(),logger ) ;
 	}
 }
 
 QString settings::downloadFolder()
 {
-	return _downloadFolder( m_settings,this->portableVersion(),[]( const QString& ){} ) ;
+	return this->downloadFolder( nullptr ) ;
 }
 
 QString settings::downloadFolder( Logger& logger )
 {
-	return _downloadFolder( m_settings,this->portableVersion(),[ &logger ]( const QString& e ){
-
-		logger.add( e,utility::sequentialID() ) ;
-	} ) ;
+	return this->downloadFolder( &logger ) ;
 }
 
 bool settings::showTrayIcon()
@@ -941,7 +919,7 @@ QStringList settings::localizationLanguages()
 
 const QString& settings::configPaths()
 {
-	return m_dataPath ;
+	return m_options.dataPath() ;
 }
 
 QString settings::commandOnSuccessfulDownload()
@@ -1003,7 +981,7 @@ QString settings::localizationLanguagePath()
 {
 	if( utility::platformIsWindows() ){
 
-		return m_exePath + "/translations" ;
+		return m_options.windowsOnlyExePath() + "/translations" ;
 	}
 
 	if( !m_settings.contains( "TranslationsPath" ) ){
@@ -1049,4 +1027,122 @@ QString settings::localizationLanguage()
 	}
 
 	return m_settings.value( "Language" ).toString() ;
+}
+
+bool settings::portableVersion()
+{
+	return m_options.portableVersion() ;
+}
+
+settings::options::options( const utility::cliArguments& args )
+{
+	if( utility::platformIsWindows() ){
+
+		m_exePath = utility::windowsApplicationDirPath() ;
+
+		if( args.runningUpdated() ){
+
+			m_dataPath = args.dataPath() ;
+
+			m_defaultPortableVersionDownloadFolder = args.originalPath() + "/Downloads" ;
+
+			m_portableVersion = args.portable() ;
+
+			m_exe3PartyBinPath = args.originalPath() + "/3rdParty" ;
+
+			const auto& m = args.originalVersion() ;
+			const auto& mm = utility::runningVersionOfMediaDownloader() ;
+
+			utility::setHelpVersionOfMediaDownloader( m + "/" + mm ) ;
+		}else{
+			auto a = m_exePath  + "/local" ;
+
+			m_exe3PartyBinPath = m_exePath + "/3rdParty" ;
+
+			m_defaultPortableVersionDownloadFolder = m_exePath + "/Downloads" ;
+
+			if( utility::pathIsFolderAndExists( a ) ){
+
+				m_dataPath = a ;
+
+				m_portableVersion = true ;
+			}else{
+				m_dataPath = _configPath() ;
+
+				m_portableVersion = false ;
+			}
+		}
+	}else{
+		m_dataPath = _configPath() ;
+
+		m_portableVersion = false ;
+	}
+}
+
+settings::proxySettings settings::getProxySettings()
+{
+	return { m_settings } ;
+}
+
+settings::proxySettings::proxySettings( QSettings& s ) : m_settings( s )
+{
+	if( !m_settings.contains( "ProxySettingsType" ) ){
+
+		m_settings.setValue( "ProxySettingsType","None" ) ;
+	}
+}
+
+settings::proxySettings& settings::proxySettings::setProxySettings( settings::proxySettings::Type s,const QString& e )
+{
+	if( s == settings::proxySettings::Type::none ){
+
+		m_settings.setValue( "ProxySettingsType","None" ) ;
+
+	}else if( s == settings::proxySettings::Type::system ){
+
+		m_settings.setValue( "ProxySettingsType","System" ) ;
+
+	}else if( s == settings::proxySettings::Type::env ){
+
+		m_settings.setValue( "ProxySettingsType","Env" ) ;
+
+	}else if( s == settings::proxySettings::Type::manual ){
+
+		m_settings.setValue( "ProxySettingsType","Manual" ) ;
+
+		m_settings.setValue( "ProxySettingsCustomSource",e.toUtf8() ) ;
+	}
+
+	return *this ;
+}
+
+settings::proxySettings::type settings::proxySettings::types() const
+{
+	auto m = m_settings.value( "ProxySettingsType" ).toString() ;
+
+	if( m == "None" ){
+
+		return settings::proxySettings::Type::none ;
+
+	}else if( m == "System" ){
+
+		return settings::proxySettings::Type::system ;
+
+	}else if( m == "Env" ){
+
+		return settings::proxySettings::Type::env ;
+
+	}else if( m == "Manual" ){
+
+		return settings::proxySettings::Type::manual ;
+	}else{
+		m_settings.setValue( "ProxySettingsType","None" ) ;
+
+		return settings::proxySettings::Type::none ;
+	}
+}
+
+QByteArray settings::proxySettings::proxyAddress() const
+{
+	return m_settings.value( "ProxySettingsCustomSource" ).toByteArray() ;
 }
