@@ -28,13 +28,6 @@
 
 #include <csignal>
 
-static std::unique_ptr< Ui::MainWindow > _init_ui( QMainWindow& mw )
-{
-	auto m = std::make_unique< Ui::MainWindow >() ;
-	m->setupUi( &mw ) ;
-	return m ;
-}
-
 MainWindow::MainWindow( QApplication& app,
 			settings& s,
 			translator& t,
@@ -43,13 +36,14 @@ MainWindow::MainWindow( QApplication& app,
 	m_trayIcon( QIcon::fromTheme( "media-downloader",QIcon( ":media-downloader" ) ) ),
 	m_qApp( app ),
 	m_appName( "Media Downloader" ),
-	m_ui( _init_ui( *this ) ),
-	m_logger( *m_ui->plainTextEditLogger,this,s ),
+	m_ui( this ),
+	m_logger( m_ui.plainTextEditLogger(),this,s ),
 	m_engines( m_logger,paths,s,utility::sequentialID() ),
 	m_printOutPut( args ),
-	m_tabManager( s,t,m_engines,m_logger,*m_ui,*this,*this,m_appName,m_printOutPut ),
+	m_tabManager( s,t,m_engines,m_logger,m_ui.get(),*this,*this,m_appName,m_printOutPut ),
 	m_settings( s ),
-	m_showTrayIcon( s.showTrayIcon() )
+	m_showTrayIcon( s.showTrayIcon() ),
+	m_shortcut( this )
 {
 	MainWindow::setUpSignals( this ) ;
 
@@ -61,6 +55,13 @@ MainWindow::MainWindow( QApplication& app,
 	this->window()->setFixedSize( this->window()->size() ) ;
 
 	this->window()->setWindowIcon( m_trayIcon.icon() ) ;
+
+	m_shortcut.setKey( Qt::CTRL | Qt::Key_D ) ;
+
+	connect( &m_shortcut,&QShortcut::activated,[ & ](){
+
+		m_logger.showDebugLogWindow() ;
+	} ) ;
 
 	m_trayIcon.setContextMenu( [ this,&t ](){
 
@@ -75,6 +76,10 @@ MainWindow::MainWindow( QApplication& app,
 
 		return m ;
 	}() ) ;
+
+	auto qe = Qt::QueuedConnection ;
+
+	connect( this,&MainWindow::processEventSignal,this,&MainWindow::processEventSlot,qe ) ;
 
 	connect( &m_trayIcon,&QSystemTrayIcon::activated,[ this ]( QSystemTrayIcon::ActivationReason ){
 
@@ -137,7 +142,7 @@ void MainWindow::showTrayIcon( bool e )
 
 void MainWindow::retranslateUi()
 {
-	m_ui->retranslateUi( this ) ;
+	m_ui.retranslateUi( this ) ;
 }
 
 void MainWindow::setTitle( const QString& m )
@@ -162,10 +167,7 @@ void MainWindow::Show()
 
 void MainWindow::processEvent( const QByteArray& m )
 {
-	auto a = "processEventSlot" ;
-	auto b = Qt::QueuedConnection ;
-
-	QMetaObject::invokeMethod( this,a,b,Q_ARG( QByteArray,m ) ) ;
+	emit this->processEventSignal( m ) ;
 }
 
 void MainWindow::processEventSlot( const QByteArray& e )
@@ -175,11 +177,39 @@ void MainWindow::processEventSlot( const QByteArray& e )
 
 void MainWindow::quitApp()
 {
-	m_settings.setTabNumber( m_ui->tabWidget->currentIndex() ) ;
+	m_settings.setTabNumber( m_ui.currentIndex() ) ;
 
 	m_tabManager.exiting() ;
 
+	if( m_dataNotSaved ){
+
+		m_dataNotSaved = false ;
+		this->saveData() ;
+	}
+
 	QCoreApplication::quit() ;
+}
+
+void MainWindow::saveData()
+{
+	m_tabManager.batchDownloader().saveData() ;
+	m_tabManager.playlistDownloader().saveData() ;
+}
+
+void MainWindow::notifyOnDownloadComplete( const QString& e )
+{
+	auto m = QSystemTrayIcon::Information ;
+	auto s = m_settings.desktopNotificationTimeOut() ;
+
+	m_trayIcon.showMessage( "Download Complete",e,m,s ) ;
+}
+
+void MainWindow::notifyOnAllDownloadComplete( const QString& e )
+{
+	auto m = QSystemTrayIcon::Information ;
+	auto s = m_settings.desktopNotificationTimeOut() ;
+
+	m_trayIcon.showMessage( "All Downloads Complete",e,m,s ) ;
 }
 
 MainWindow::~MainWindow()
@@ -204,14 +234,12 @@ void MainWindow::setUpSignal( int sig )
 	std::signal( sig,MainWindow::signalHandler ) ;
 }
 
-void MainWindow::closeEvent( QCloseEvent * e )
+void MainWindow::closeEvent( QCloseEvent * )
 {
-	e->ignore() ;
+	if( m_showTrayIcon ){
 
-	this->hide() ;
-
-	if( !m_showTrayIcon ){
-
+		this->hide() ;
+	}else{
 		this->quitApp() ;
 	}
 }

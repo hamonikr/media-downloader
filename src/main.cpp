@@ -57,6 +57,48 @@ private:
 	MainWindow m_app ;
 };
 
+int start( int argc,char * argv[],
+	   const utility::cliArguments& cargs,
+	   engines::enginePaths& paths,
+	   settings& ss )
+{
+	QApplication mqApp( argc,argv ) ;
+
+	ss.setTheme( mqApp,paths.themePath() ) ;
+
+	const auto& args = cargs.arguments() ;
+
+	if( tests::test_engine( args,mqApp ) ){
+
+		return 0 ;
+	}else{
+		auto spath = paths.socketPath() ;
+
+		QJsonObject jsonArgs ;
+
+		jsonArgs.insert( "-a",cargs.contains( "-a" ) ) ;
+
+		jsonArgs.insert( "-e",cargs.contains( "-e" ) ) ;
+
+		jsonArgs.insert( "-u",cargs.value( "-u" ) ) ;
+
+		jsonArgs.insert( "--proxy",cargs.value( "--proxy" ) ) ;
+
+		auto json = QJsonDocument( jsonArgs ).toJson( QJsonDocument::Indented ) ;
+
+		myApp::args args{ mqApp,ss,paths,cargs } ;
+
+		utils::app::appInfo< myApp,myApp::args > m( args,spath,mqApp,json ) ;
+
+		if( cargs.contains( "-s" ) || !ss.singleInstance() ){
+
+			return utils::app::runMultiInstances( std::move( m ) ) ;
+		}else{
+			return utils::app::runOneInstance( std::move( m ) ) ;
+		}
+	}
+}
+
 int main( int argc,char * argv[] )
 {
 	utility::cliArguments cargs( argc,argv ) ;
@@ -64,53 +106,19 @@ int main( int argc,char * argv[] )
 	if( utility::onlyWantedVersionInfo( cargs ) ){
 
 		return 0 ;
-	}
-
-	settings settings( cargs ) ;
-
-	if( utility::platformIsWindows() ){
-
-		if( utility::startedUpdatedVersion( settings,cargs ) ){
-
-			return 0 ;
-		}
-	}
-
-	QApplication mqApp( argc,argv ) ;
-
-	engines::enginePaths paths( settings ) ;
-
-	settings.setTheme( mqApp,paths.themePath() ) ;
-
-	const auto& args = cargs.arguments() ;
-
-	if( tests::test_engine( args,mqApp ) ){
-
-		return 0 ;
-	}
-
-	auto spath = paths.socketPath() ;
-
-	QJsonObject jsonArgs ;
-
-	jsonArgs.insert( "-a",cargs.contains( "-a" ) ) ;
-
-	jsonArgs.insert( "-e",cargs.contains( "-e" ) ) ;
-
-	jsonArgs.insert( "-u",cargs.value( "-u" ) ) ;
-
-	jsonArgs.insert( "--proxy",cargs.value( "--proxy" ) ) ;
-
-	auto json = QJsonDocument( jsonArgs ).toJson( QJsonDocument::Indented ) ;
-
-	utils::app::appInfo< myApp,myApp::args > m( { mqApp,settings,paths,cargs },spath,mqApp,json ) ;
-
-	qDebug() << "Current language:" << settings.localizationLanguage(); // Debug output to check language
-
-	if( cargs.contains( "-s" ) || !settings.singleInstance() ){
-
-		return utils::app::runMultiInstances( std::move( m ) ) ;
 	}else{
-		return utils::app::runOneInstance( std::move( m ) ) ;
+		settings ss( cargs ) ;
+
+		engines::enginePaths paths( ss ) ;
+
+		if( utility::platformIsWindows() ){
+
+			if( utility::startedUpdatedVersion( ss,cargs ) ){
+
+				return 0 ;
+			}
+		}
+
+		return start( argc,argv,cargs,paths,ss ) ;
 	}
 }

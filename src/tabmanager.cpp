@@ -42,6 +42,8 @@ tabManager::tabManager( settings& s,
 	m_playlistdownloader( m_ctx ),
 	m_library( m_ctx )
 {
+	t.setContext( &m_ctx ) ;
+
 	qRegisterMetaType< QClipboard::Mode >() ;
 
 	m_clipboard = QApplication::clipboard() ;
@@ -128,13 +130,6 @@ void tabManager::init_done()
 			m_currentTab = index ;
 		}
 	} ) ;
-
-	auto& ss = m_ctx.Settings() ;
-
-	if( ss.checkForUpdates() && !ss.showVersionInfoWhenStarting() ){
-
-		m_ctx.getVersionInfo().checkForUpdates() ;
-	}
 }
 
 void tabManager::setDefaultEngines()
@@ -183,30 +178,48 @@ void tabManager::mainThreadClipboardHandler()
 
 		if( m.startsWith( "http" ) ){
 
-			m_basicdownloader.clipboardData( m ) ;
 			m_batchdownloader.clipboardData( m ) ;
-			m_playlistdownloader.clipboardData( m ) ;
 		}
 	}
 }
 
+class timeOutMonitor
+{
+public:
+	timeOutMonitor( const Context& ctx ) :
+		m_timeOut( ctx.Settings().timeOutWaitingForClipboardData() ),
+		m_then( m_timeOut > 0 ? QDateTime::currentMSecsSinceEpoch() : 0 )
+	{
+	}
+	bool notTimedOut() const
+	{
+		if( m_timeOut > 0 ){
+
+			auto now = QDateTime::currentMSecsSinceEpoch() ;
+
+			return ( now - m_then ) <= m_timeOut ;
+		}else{
+			return true ;
+		}
+	}
+private:
+	qint64 m_timeOut ;
+	qint64 m_then ;
+} ;
+
 void tabManager::bgThreadClipboardHandler()
 {
-	utils::qthread::run( [ this ](){
+	utils::qthread::run( [ m = m_ctx.nativeHandleToMainWindow() ](){
 
-		return utility::windowsGetClipBoardText( m_ctx ) ;
+		return utility::windowsGetClipBoardText( m ) ;
 
-	},[ then = QDateTime::currentMSecsSinceEpoch(),this ]( const QString& e ){
+	},[ timer = timeOutMonitor( m_ctx ),this ]( const QString& e ){
 
-		auto now = QDateTime::currentMSecsSinceEpoch() ;
-
-		if( now - then <= 10000 ){
+		if( timer.notTimedOut() ){
 
 			if( e.startsWith( "http" ) ){
 
-				m_basicdownloader.clipboardData( e ) ;
 				m_batchdownloader.clipboardData( e ) ;
-				m_playlistdownloader.clipboardData( e ) ;
 			}
 		}else{
 			auto a = QObject::tr( "Warning: Skipping Clipboard Content" ) ;
@@ -316,4 +329,14 @@ tabManager& tabManager::exiting()
 	m_library.exiting() ;
 
 	return *this ;
+}
+
+void tabManager::textAlignmentChanged( Qt::LayoutDirection m )
+{
+	m_about.textAlignmentChanged( m ) ;
+	m_configure.textAlignmentChanged( m ) ;
+	m_basicdownloader.textAlignmentChanged( m ) ;
+	m_batchdownloader.textAlignmentChanged( m ) ;
+	m_playlistdownloader.textAlignmentChanged( m ) ;
+	m_library.textAlignmentChanged( m ) ;
 }

@@ -37,8 +37,6 @@
 #include <memory>
 #include <type_traits>
 
-#include "utils/qprocess.hpp"
-
 namespace util {
 
 namespace types
@@ -475,8 +473,8 @@ public:
 	version()
 	{
 	}
-	version( int major,int minor,int patch ) :
-		m_valid( true ),m_major( major ),m_minor( minor ),m_patch( patch )
+	version( int major,int minor,int patch,int gitDate ) :
+		m_valid( true ),m_major( major ),m_minor( minor ),m_patch( patch ),m_gitDate( gitDate )
 	{
 	}
 	template< typename T >
@@ -499,7 +497,7 @@ public:
 				m_minor = s.at( 1 ).toInt( &m_valid ) ;
 			}
 
-		}else if( m >= 3 ) {
+		}else if( m == 3 ){
 
 			m_major = s.at( 0 ).toInt( &m_valid ) ;
 
@@ -512,6 +510,25 @@ public:
 					m_patch = s.at( 2 ).toInt( &m_valid ) ;
 				}
 			}
+
+		}else if( m > 3 ){
+
+			m_major = s.at( 0 ).toInt( &m_valid ) ;
+
+			if( m_valid ){
+
+				m_minor = s.at( 1 ).toInt( &m_valid ) ;
+
+				if( m_valid ){
+
+					m_patch = s.at( 2 ).toInt( &m_valid ) ;
+
+					if( m_valid ){
+
+						m_gitDate = s.at( 3 ).toInt( &m_valid ) ;
+					}
+				}
+			}
 		}
 	}
 	bool valid() const
@@ -520,7 +537,7 @@ public:
 	}
 	bool operator==( const version& other ) const
 	{
-		return m_major == other.m_major && m_minor == other.m_minor && m_patch == other.m_patch ;
+		return m_major == other.m_major && m_minor == other.m_minor && m_patch == other.m_patch && m_gitDate == other.m_gitDate ;
 	}
 	bool operator<( const version& other ) const
 	{
@@ -536,7 +553,14 @@ public:
 
 			}else if( m_minor == other.m_minor ){
 
-				return m_patch < other.m_patch ;
+				if( m_patch < other.m_patch ){
+
+					return true ;
+
+				}else if( m_patch == other.m_patch ){
+
+					return m_gitDate < other.m_gitDate ;
+				}
 			}
 		}
 
@@ -569,14 +593,25 @@ public:
 		auto a = QString::number( m_major ) ;
 		auto b = QString::number( m_minor ) ;
 		auto c = QString::number( m_patch ) ;
+		auto d = QString::number( m_gitDate ) ;
 
-		return a + "." + b + "." + c ;
+		if( d == "0" ){
+
+			return a + "." + b + "." + c ;
+		}else{
+			return a + "." + b + "." + c + "." + d ;
+		}
+	}
+	version move()
+	{
+		return std::move( *this ) ;
 	}
 private:
 	bool m_valid = false ;
 	int m_major = 0 ;
 	int m_minor = 0 ;
 	int m_patch = 0 ;
+	int m_gitDate = 0 ;
 };
 }
 

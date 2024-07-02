@@ -45,6 +45,13 @@ configure::configure( const Context& ctx ) :
 	m_downloadDefaultOptions( m_ctx,"downloadDefaultOptions.json" ),
 	m_downloadEngineDefaultOptions( m_ctx,"downloadEngineDefaultOptions.json" )
 {
+	m_ui.pbConfigureCookiePath->setIcon( QIcon( ":/cookie" ) ) ;
+	m_ui.pbOpenThemeFolder->setIcon( QIcon( ":/json" ) ) ;
+	m_ui.pbOpenBinFolder->setIcon( QIcon( ":/executable" ) ) ;
+	m_ui.pbConfigureDownloadPath->setIcon( QIcon( ":/folder" ) ) ;
+
+	this->setVisibilityEditConfigFeature( false ) ;
+
 	m_ui.tableWidgetConfigureUrl->setColumnWidth( 0,180 ) ;
 
 	m_ui.lineEditConfigureScaleFactor->setEnabled( m_settings.enabledHighDpiScaling() ) ;
@@ -55,33 +62,54 @@ configure::configure( const Context& ctx ) :
 
 	themes ths( themesFolderPath ) ;
 
-	ths.setComboBox( *m_ui.comboBoxConfigureDarkTheme,m_settings.themeName() ) ;
+	auto themeName = m_settings.themeName() ;
+	ths.setComboBox( *m_ui.comboBoxConfigureDarkTheme,themeName ) ;
 
-	auto cc = static_cast< void ( QComboBox::* )( int ) >( &QComboBox::currentIndexChanged ) ;
+	if( themeName.contains( "dark",Qt::CaseInsensitive ) ){
 
-	m_tablePresetOptions.connect( &QTableWidget::currentItemChanged,[ this ]( QTableWidgetItem * c,QTableWidgetItem * p ){
+		if( utility::platformIsWindows() ){
 
-		m_tablePresetOptions.selectRow( c,p,0 ) ;
+			utility::windowsSetDarkModeTitleBar( m_ctx ) ;
+		}
+	}
+
+	m_tablePresetOptions.setCurrentItemChanged( 0 ) ;
+
+	m_tableUrlToDefaultEngine.setCurrentItemChanged( 0 ) ;
+
+	m_tableDefaultDownloadOptions.setCurrentItemChanged( 0 ) ;
+
+	connect( m_ui.pbConfigureSaveEditOption,&QPushButton::clicked,[ this ](){
+
+		auto row = m_tableDefaultDownloadOptions.currentRow() ;
+
+		if( row != -1 ){
+
+			auto Old = m_tableDefaultDownloadOptions.item( row,1 ).text() ;
+
+			auto New = m_ui.textEditConfigureEditOption->toPlainText() ;
+
+			auto mm = m_ui.cbConfigureEngines->currentText() ;
+
+			m_downloadEngineDefaultOptions.replace( mm,Old,New ) ;
+
+			const auto& s = m_ctx.Engines().getEngineByName( mm ) ;
+
+			this->populateOptionsTable( s.value(),row ) ;
+		}
+
+		this->setVisibilityEditConfigFeature( false ) ;
 	} ) ;
 
-	m_tableUrlToDefaultEngine.connect( &QTableWidget::currentItemChanged,[ this ]( QTableWidgetItem * c,QTableWidgetItem * p ){
+	connect( m_ui.pbConfigureSaveEditOptionCancel,&QPushButton::clicked,[ this ](){
 
-		m_tableUrlToDefaultEngine.selectRow( c,p,0 ) ;
+		this->setVisibilityEditConfigFeature( false ) ;
 	} ) ;
-
-	m_tableDefaultDownloadOptions.connect( &QTableWidget::currentItemChanged,[ this ]( QTableWidgetItem * c,QTableWidgetItem * p ){
-
-		m_tableDefaultDownloadOptions.selectRow( c,p,0 ) ;
-	} ) ;
-
-	m_ui.pbOpenThemeFolder->setIcon( QIcon( ":/json" ) ) ;
 
 	connect( m_ui.pbOpenThemeFolder,&QPushButton::clicked,[ themesFolderPath ](){
 
 		QDesktopServices::openUrl( QUrl( "file:///" + themesFolderPath,QUrl::TolerantMode ) ) ;
 	} ) ;
-
-	m_ui.pbOpenBinFolder->setIcon( QIcon( ":/executable" ) ) ;
 
 	connect( m_ui.pbOpenBinFolder,&QPushButton::clicked,[ this,themesFolderPath ](){
 
@@ -90,12 +118,36 @@ configure::configure( const Context& ctx ) :
 		QDesktopServices::openUrl( QUrl( "file:///" + m,QUrl::TolerantMode ) ) ;
 	} ) ;
 
-	connect( m_ui.comboBoxConfigureDarkTheme,cc,[ this,ths = std::move( ths ) ]( int index ){
+	auto cc = static_cast< void ( QComboBox::* )( int ) >( &QComboBox::currentIndexChanged ) ;
+
+	connect( m_ui.comboBoxConfigureDarkTheme,cc,[ this,ths = ths.move() ]( int index ){
 
 		if( index != -1 ){
 
 			m_settings.setThemeName( ths.unTranslatedAt( index ) ) ;
 		}
+	} ) ;
+
+	if( m_settings.showVersionInfoAndAutoDownloadUpdates() ){
+
+		m_ui.comboBoxActionsWhenStarting->setCurrentIndex( 0 ) ;
+
+	}else if( m_settings.showLocalAndLatestVersionInformation() ){
+
+		m_ui.comboBoxActionsWhenStarting->setCurrentIndex( 1 ) ;
+
+	}else if( m_settings.showLocalVersionInformationOnly() ){
+
+		m_ui.comboBoxActionsWhenStarting->setCurrentIndex( 2 ) ;
+	}else{
+		m_ui.comboBoxActionsWhenStarting->setCurrentIndex( 3 ) ;
+	}
+
+	connect( m_ui.comboBoxActionsWhenStarting,cc,[ this ]( int index ){
+
+		m_settings.setShowVersionInfoAndAutoDownloadUpdates( index == 0 ) ;
+		m_settings.setShowLocalAndLatestVersionInformation( index == 1 ) ;
+		m_settings.setShowLocalVersionInformationOnly( index == 2 ) ;
 	} ) ;
 
 	connect( m_ui.pbConfigureAddToPresetList,&QPushButton::clicked,[ this ](){
@@ -106,7 +158,7 @@ configure::configure( const Context& ctx ) :
 
 		if( !a.isEmpty() && !b.isEmpty() ){
 
-			m_tablePresetOptions.add( { a,b,c } ) ;
+			m_tablePresetOptions.add( a,b,c ) ;
 
 			m_tablePresetOptions.selectLast() ;
 
@@ -154,7 +206,7 @@ configure::configure( const Context& ctx ) :
 
 					m_downloadEngineDefaultOptions.setAsDefault( obj ) ;
 
-					this->populateOptionsTable( s ) ;
+					this->populateOptionsTable( s.value(),m ) ;
 				}
 			}
 		} ) ;
@@ -172,7 +224,10 @@ configure::configure( const Context& ctx ) :
 
 				const auto& s = m_ctx.Engines().getEngineByName( mm ) ;
 
-				this->populateOptionsTable( s ) ;
+				if( s ){
+
+					this->populateOptionsTable( s.value() ) ;
+				}
 			}
 		} ) ;
 
@@ -195,6 +250,20 @@ configure::configure( const Context& ctx ) :
 			}
 		} ) ;
 
+		connect( m.addAction( tr( "Edit" ) ),&QAction::triggered,[ this ](){
+
+			auto row = m_tableDefaultDownloadOptions.currentRow() ;
+
+			if( row != -1 ){
+
+				auto m = m_tableDefaultDownloadOptions.item( row,1 ).text() ;
+
+				m_ui.textEditConfigureEditOption->setText( m ) ;
+
+				this->setVisibilityEditConfigFeature( true ) ;
+			}
+		} ) ;
+
 		m.exec( QCursor::pos() ) ;
 	} ) ;
 
@@ -210,9 +279,14 @@ configure::configure( const Context& ctx ) :
 
 			if( s ){
 
-				auto obj = m_downloadEngineDefaultOptions.addOpt( "no",s->name(),m ) ;
+				auto obj = m_downloadEngineDefaultOptions.addOpt( "yes",s->name(),m ) ;
 
-				m_tableDefaultDownloadOptions.add( { "no",m },std::move( obj ) ) ;
+				for( int i = 0 ; i < m_tableDefaultDownloadOptions.rowCount() ; i++ ){
+
+					m_tableDefaultDownloadOptions.item( i,0 ).setText( "no" ) ;
+				}
+
+				m_tableDefaultDownloadOptions.add( std::move( obj ),"yes",m ) ;
 
 				m_tableDefaultDownloadOptions.selectLast() ;
 
@@ -239,7 +313,7 @@ configure::configure( const Context& ctx ) :
 
 			auto obj = m_downloadDefaultOptions.add( a,b,c ) ;
 
-			m_tableUrlToDefaultEngine.add( { a,b },std::move( obj ) ) ;
+			m_tableUrlToDefaultEngine.add( std::move( obj ),a,b ) ;
 
 			m_tableUrlToDefaultEngine.selectLast() ;
 		}
@@ -284,7 +358,12 @@ configure::configure( const Context& ctx ) :
 
 			auto m = m_ui.cbConfigureEngines->itemText( index ) ;
 
-			this->populateOptionsTable( m_engines.getEngineByName( m ) ) ;
+			auto s = m_engines.getEngineByName( m ) ;
+
+			if( s ){
+
+				this->populateOptionsTable( s.value() ) ;
+			}
 
 			this->setEngineOptions( m,engineOptions::options ) ;
 		}
@@ -332,7 +411,10 @@ configure::configure( const Context& ctx ) :
 
 	connect( m_ui.pbConfigureAddAPlugin,&QPushButton::clicked,[ this ](){
 
-		auto m = QFileDialog::getOpenFileName( &m_ctx.mainWidget(),tr( "Select An Engine File" ),utility::homePath() ) ;
+		auto mm = tr( "Select An Engine File" ) ;
+		auto ee = utility::homePath() ;
+
+		auto m = QFileDialog::getOpenFileName( &m_ctx.mainWidget(),mm,ee ) ;
 
 		if( m.isEmpty() ){
 
@@ -389,8 +471,9 @@ configure::configure( const Context& ctx ) :
 
 			auto& m = m_ctx.getVersionInfo() ;
 
-			m.check( { engine.value(),id },
-				 { util::types::type_identity< woof >(),m_ctx,std::move( name ) },true ) ;
+			auto tt = util::types::type_identity< woof >() ;
+
+			m.check( { engine.value(),id },{ tt,m_ctx,std::move( name ) },true ) ;
 		}
 	} ) ;
 
@@ -441,7 +524,8 @@ configure::configure( const Context& ctx ) :
 				class meaw : public networkAccess::status
 				{
 				public:
-					meaw( const Context& ctx,int id ) : m_ctx( ctx ),m_id( id )
+					meaw( const Context& ctx,int id ) :
+						m_ctx( ctx ),m_id( id )
 					{
 					}
 					void done()
@@ -457,11 +541,13 @@ configure::configure( const Context& ctx ) :
 					int m_id ;
 				} ;
 
-				networkAccess::Status s{ util::types::type_identity< meaw >(),m_ctx,id } ;
+				auto tt = util::types::type_identity< meaw >() ;
 
-				m_ctx.network().updateMediaDownloader( std::move( s ) ) ;
+				m_ctx.network().updateMediaDownloader( { tt,m_ctx,id } ) ;
 			}else{
-				this->downloadFromGitHub( { m_ctx.Engines().defaultEngine( m,id ),id } ) ;
+				const auto& engine = m_ctx.Engines().defaultEngine( m,id ) ;
+
+				this->downloadFromGitHub( { engine,id } ) ;
 			}
 		}
 	} ) ;
@@ -498,14 +584,13 @@ configure::configure( const Context& ctx ) :
 		this->showOptions() ;
 	} ) ;
 
-	m_ui.pbConfigureDownloadPath->setIcon( QIcon( ":/folder" ) ) ;
-
 	connect( m_ui.pbConfigureDownloadPath,&QPushButton::clicked,[ this ](){
 
-		auto e = QFileDialog::getExistingDirectory( &m_mainWindow,
-							    tr( "Set Download Folder" ),
-							    QDir::homePath(),
-							    QFileDialog::ShowDirsOnly ) ;
+		auto a = tr( "Set Download Folder" ) ;
+		auto b = QDir::homePath() ;
+		auto c = QFileDialog::ShowDirsOnly ;
+
+		auto e = QFileDialog::getExistingDirectory( &m_mainWindow,a,b,c ) ;
 
 		if( !e.isEmpty() ){
 
@@ -523,7 +608,7 @@ configure::configure( const Context& ctx ) :
 
 			m_downloadEngineDefaultOptions.removeAll( s->name() ) ;
 
-			this->populateOptionsTable( s ) ;
+			this->populateOptionsTable( s.value() ) ;
 		}
 	} ) ;
 
@@ -531,38 +616,38 @@ configure::configure( const Context& ctx ) :
 
 	m_ui.lineEditConfigureDownloadPath->setText( m_settings.downloadFolder() ) ;
 
-	m_ui.cbConfigureShowVersionInfo->setChecked( m_settings.showVersionInfoWhenStarting() ) ;
-
 	m_ui.cbAutoHideDownloadCompleted->setChecked( m_settings.autoHideDownloadWhenCompleted() ) ;
 
-	m_ui.cbConfigureShowMetaDataInBatchDownloader->setChecked( m_settings.showMetaDataInBatchDownloader() ) ;
+	auto ss = m_settings.showMetaDataInBatchDownloader() ;
+
+	m_ui.cbConfigureShowMetaDataInBatchDownloader->setChecked( ss ) ;
 
 	m_ui.cbAutoSaveNotDownloadedMedia->setChecked( m_settings.autoSavePlaylistOnExit() ) ;
 
 	m_ui.lineEditConfigureTextEncoding->setText( m_settings.textEncoding() ) ;
 
-	m_ui.cbCheckForUpdates->setChecked( m_settings.checkForUpdates() ) ;
 
 	m_ui.cbShowTrayIcon->setChecked( m_settings.showTrayIcon() ) ;
-
-	connect( m_ui.cbCheckForUpdates,&QCheckBox::stateChanged,[ this ]( int e ){
-
-		auto s = static_cast< Qt::CheckState >( e ) ;
-
-		if( s == Qt::Checked ){
-
-			m_ctx.getVersionInfo().checkForUpdates() ;
-		}
-	} ) ;
 
 	auto mm = QString::number( m_settings.maxConcurrentDownloads() ) ;
 
 	m_ui.lineEditConfigureMaximuConcurrentDownloads->setText( mm ) ;
 
-	auto proxy      = m_ctx.Settings().getProxySettings() ;
-	auto proxy_type = proxy.types() ;
+	const auto proxy      = m_ctx.Settings().getProxySettings() ;
+	const auto proxy_type = proxy.types() ;
 
-	m_ui.rbUseSystemProxy->setEnabled( utility::platformIsWindows() ) ;
+	if( !utility::platformIsWindows() ){
+
+		auto systemProxyHeight = m_ui.rbUseSystemProxy->height() ;
+		m_ui.rbUseSystemProxy->hide() ;
+
+		const auto& fromEnv = m_ui.rbGetFromEnv ;
+
+		fromEnv->move( fromEnv->x(),fromEnv->y() - systemProxyHeight ) ;
+
+		const auto& manual = m_ui.rbUseManualProxy ;
+		manual->move( manual->x(),manual->y() - systemProxyHeight ) ;
+	}
 
 	if( proxy_type.manual() ){
 
@@ -647,15 +732,12 @@ void configure::retranslateUi()
 {
 	this->resetMenu() ;
 
+	this->setUpdateMenu() ;
+
 	themes().setComboBox( *m_ui.comboBoxConfigureDarkTheme,m_settings.themeName() ) ;
 }
 
-void configure::downloadFromGitHub( const engines::Iterator& iter )
-{
-	m_ctx.network().download( iter,{ true,false } ) ;
-}
-
-void configure::tabEntered()
+void configure::setUpdateMenu()
 {
 	m_menu.clear() ;
 
@@ -684,43 +766,62 @@ void configure::tabEntered()
 	m_menu.addAction( tr( "Cancel" ) ) ;
 
 	m_ui.pbConfigureDownload->setMenu( &m_menu ) ;
+}
+
+void configure::downloadFromGitHub( const engines::Iterator& iter )
+{
+	m_ctx.network().download( iter ) ;
+}
+
+void configure::tabEntered()
+{
+	this->setUpdateMenu() ;
 
 	auto mm = m_ui.cbConfigureEngines->currentText() ;
 
-	this->populateOptionsTable( m_engines.getEngineByName( mm ) ) ;
-}
-
-void configure::populateOptionsTable( const util::result_ref< const engines::engine& >& s )
-{
-	m_tableDefaultDownloadOptions.clear() ;
+	auto s = m_engines.getEngineByName( mm ) ;
 
 	if( s ){
 
-		m_downloadEngineDefaultOptions.forEach( [ s,this ]( const configure::downloadDefaultOptions::optsEngines& opts,QJsonObject obj ){
+		this->populateOptionsTable( s.value() ) ;
+	}
+}
 
-			if( s->name() == opts.engine ){
+void configure::populateOptionsTable( const engines::engine& s,int selectRow )
+{
+	m_tableDefaultDownloadOptions.clear() ;
 
-				m_tableDefaultDownloadOptions.add( { opts.inuse,opts.options },std::move( obj ) ) ;
-			}
+	using mm = configure::downloadDefaultOptions::optsEngines ;
 
-			return false ;
-		} ) ;
+	m_downloadEngineDefaultOptions.forEach( [ &s,this ]( const mm& opts,QJsonObject obj ){
 
-		if( m_tableDefaultDownloadOptions.rowCount() == 0 ){
+		if( s.name() == opts.engine ){
 
-			const auto& e = s->defaultDownLoadCmdOptions() ;
-
-			if( !e.isEmpty() ){
-
-				auto b = e.join( " " ) ;
-
-				auto obj = m_downloadEngineDefaultOptions.addOpt( "yes",s->name(),b ) ;
-
-				m_tableDefaultDownloadOptions.add( { "yes",b },std::move( obj ) ) ;
-			}
+			m_tableDefaultDownloadOptions.add( std::move( obj ),opts.inuse,opts.options ) ;
 		}
 
+		return false ;
+	} ) ;
+
+	if( m_tableDefaultDownloadOptions.rowCount() == 0 ){
+
+		const auto& e = s.defaultDownLoadCmdOptions() ;
+
+		if( !e.isEmpty() ){
+
+			auto b = e.join( " " ) ;
+
+			auto obj = m_downloadEngineDefaultOptions.addOpt( "yes",s.name(),b ) ;
+
+			m_tableDefaultDownloadOptions.add( std::move( obj ),"yes",b ) ;
+		}
+	}
+
+	if( selectRow == -1 ){
+
 		m_tableDefaultDownloadOptions.selectLast() ;
+	}else{
+		m_tableDefaultDownloadOptions.selectRow( selectRow ) ;
 	}
 }
 
@@ -794,9 +895,7 @@ void configure::saveOptions()
 	m_settings.setShowMetaDataInBatchDownloader( m ) ;
 	m_settings.setHighDpiScalingFactor( m_ui.lineEditConfigureScaleFactor->text() ) ;
 	m_settings.setDownloadFolder( m_ui.lineEditConfigureDownloadPath->text() ) ;
-	m_settings.setShowVersionInfoWhenStarting( m_ui.cbConfigureShowVersionInfo->isChecked() ) ;
 	m_settings.setAutoSavePlaylistOnExit( m_ui.cbAutoSaveNotDownloadedMedia->isChecked() ) ;
-	m_settings.setCheckForUpdates( m_ui.cbCheckForUpdates->isChecked() ) ;
 	m_settings.setTextEncoding( m_ui.lineEditConfigureTextEncoding->text() ) ;
 	m_settings.setAutoHideDownloadWhenCompleted( m_ui.cbAutoHideDownloadCompleted->isChecked() ) ;
 
@@ -829,7 +928,9 @@ void configure::saveOptions()
 
 		if( !ss->cookieArgument().isEmpty() ){
 
-			m_settings.setCookieFilePath( ss->name(),m_ui.lineEditConfigureCookiePath->text() ) ;
+			auto m = m_ui.lineEditConfigureCookiePath->text() ;
+
+			m_settings.setCookieFilePath( ss->name(),m ) ;
 		}
 	}
 
@@ -879,11 +980,17 @@ void configure::setEngineOptions( const QString& e,engineOptions tab )
 
 			m_tableUrlToDefaultEngine.clear() ;
 
-			m_downloadDefaultOptions.forEach( [ this,&engineName ]( const downloadDefaultOptions::opts& e,QJsonObject obj ){
+			using mm = downloadDefaultOptions::opts ;
+
+			auto& ss = m_downloadDefaultOptions ;
+
+			ss.forEach( [ this,&engineName ]( const mm& e,QJsonObject obj ){
 
 				if( engineName.isEmpty() || engineName == e.engine ){
 
-					m_tableUrlToDefaultEngine.add( { e.url,e.downloadOptions },std::move( obj ) ) ;
+					m_tableUrlToDefaultEngine.add( std::move( obj ),
+								       e.url,
+								       e.downloadOptions ) ;
 				}
 
 				return false ;
@@ -896,7 +1003,9 @@ void configure::setEngineOptions( const QString& e,engineOptions tab )
 
 			auto enable = !s->cookieArgument().isEmpty() ;
 
-			m_ui.lineEditConfigureCookiePath->setText( m_settings.cookieFilePath( s->name() ) ) ;
+			auto mm = m_settings.cookieFilePath( s->name() ) ;
+
+			m_ui.lineEditConfigureCookiePath->setText( mm ) ;
 			m_ui.lineEditConfigureCookiePath->setEnabled( enable ) ;
 			m_ui.pbConfigureCookiePath->setEnabled( enable ) ;
 			m_ui.labelPathToCookieFile->setEnabled( enable ) ;
@@ -930,7 +1039,7 @@ void configure::savePresetOptions()
 		auto uiName  = table.item( i,1 )->text() ;
 		auto options = table.item( i,2 )->text() ;
 
-		const auto& e = m_tablePresetOptions.stuffAt( i ) ;
+		const auto& e = m_tablePresetOptions.stuffAt( i ).value() ;
 
 		if( e.isEmpty() ){
 
@@ -945,7 +1054,7 @@ void configure::showOptions()
 {
 	m_presetOptions.forEach( [ this ]( const configure::presetEntry& e ){
 
-		m_tablePresetOptions.add( { e.website,e.uiNameTranslated,e.options },e.uiName ) ;
+		m_tablePresetOptions.add( String{ e.uiName },e.website,e.uiNameTranslated,e.options ) ;
 	} ) ;
 }
 
@@ -1007,7 +1116,6 @@ void configure::enableAll()
 	m_ui.label_5->setEnabled( true ) ;
 	m_ui.lineEditConfigureTextEncoding->setEnabled( true ) ;
 	m_ui.labelConfigureTextEncoding->setEnabled( true ) ;
-	m_ui.cbCheckForUpdates->setEnabled( true ) ;
 	m_ui.pbOpenThemeFolder->setEnabled( true ) ;
 	m_ui.pbOpenBinFolder->setEnabled( true ) ;
 	m_ui.cbConfigureEnginesUrlManager->setEnabled( true ) ;
@@ -1033,7 +1141,6 @@ void configure::enableAll()
 	m_ui.comboBoxConfigureDarkTheme->setEnabled( true ) ;
 	m_ui.pbConfigureDownload->setEnabled( true ) ;
 	m_ui.labelConfigureTheme->setEnabled( true ) ;
-	m_ui.cbConfigureShowVersionInfo->setEnabled( true ) ;
 	m_ui.cbAutoSaveNotDownloadedMedia->setEnabled( true ) ;
 	m_ui.cbConfigureLanguage->setEnabled( true ) ;
 	m_ui.labelConfigureLanguage->setEnabled( true ) ;
@@ -1052,11 +1159,35 @@ void configure::enableAll()
 	m_ui.lineEditConfigureWebsite->setEnabled( true ) ;
 	m_ui.labelConfugureWebSite->setEnabled( true ) ;
 	m_ui.cbAutoHideDownloadCompleted->setEnabled( true ) ;
+	m_ui.labelActionsAtStartup->setEnabled( true ) ;
+	m_ui.comboBoxActionsWhenStarting->setEnabled( true ) ;
 
 	if( m_settings.enabledHighDpiScaling() ){
 
 		m_ui.lineEditConfigureScaleFactor->setEnabled( true ) ;
 	}
+}
+
+void configure::textAlignmentChanged( Qt::LayoutDirection z )
+{
+	auto a = m_ui.labelProxy ;
+	auto b = m_ui.label_3 ;
+	auto c = m_ui.label_4 ;
+	auto d = m_ui.label_5 ;
+	auto e = m_ui.label_6 ;
+	auto f = m_ui.labelConfigureTextEncoding ;
+	auto g = m_ui.labelConfigureEngines_2 ;
+	auto h = m_ui.labelConfugureUiName ;
+	auto i = m_ui.labelConfigureOptionsPresetOptiions ;
+	auto j = m_ui.labelConfigureTheme ;
+	auto k = m_ui.labelMaximumConcurrentDownloads ;
+	auto l = m_ui.labelConfigureLanguage ;
+	auto m = m_ui.labelConfigureScaleFactor ;
+	auto n = m_ui.labelConfigureDownloadPath ;
+	auto o = m_ui.labelConfugureWebSite ;
+	auto p = m_ui.labelActionsAtStartup ;
+
+	utility::alignText( z,a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p ) ;
 }
 
 void configure::disableAll()
@@ -1073,7 +1204,6 @@ void configure::disableAll()
 	m_ui.label_6->setEnabled( false ) ;
 	m_ui.lineEditConfigureTextEncoding->setEnabled( false ) ;
 	m_ui.labelConfigureTextEncoding->setEnabled( false ) ;
-	m_ui.cbCheckForUpdates->setEnabled( false ) ;
 	m_ui.pbOpenThemeFolder->setEnabled( false ) ;
 	m_ui.labelConfigureEngines_2->setEnabled( false ) ;
 	m_ui.cbConfigureEnginesUrlManager->setEnabled( false ) ;
@@ -1108,7 +1238,6 @@ void configure::disableAll()
 	m_ui.labelMaximumConcurrentDownloads->setEnabled( false ) ;
 	m_ui.pbConfigureAddAPlugin->setEnabled( false ) ;
 	m_ui.pbConfigureRemoveAPlugin->setEnabled( false ) ;
-	m_ui.cbConfigureShowVersionInfo->setEnabled( false ) ;
 	m_ui.pbConfigureDownload->setEnabled( false ) ;
 	m_ui.cbConfigureLanguage->setEnabled( false ) ;
 	m_ui.labelConfigureLanguage->setEnabled( false ) ;
@@ -1124,6 +1253,8 @@ void configure::disableAll()
 	m_ui.lineEditConfigureWebsite->setEnabled( false ) ;
 	m_ui.labelConfugureWebSite->setEnabled( false ) ;
 	m_ui.cbAutoHideDownloadCompleted->setEnabled( false ) ;
+	m_ui.labelActionsAtStartup->setEnabled( false ) ;
+	m_ui.comboBoxActionsWhenStarting->setEnabled( false ) ;
 }
 
 configure::presetOptions::presetOptions( const Context& ctx,settings& s ) :
@@ -1275,22 +1406,50 @@ QByteArray configure::presetOptions::defaultData()
 	"website": "Youtube"
     },
     {
-	"options": "-f bestaudio -x --embed-thumbnail --audio-format mp3",
+	"options": "-f bestaudio --extract-audio --audio-quality 0 --audio-format mp3 --embed-thumbnail",
 	"uiName": "Best Available Audio Only(MP3)",
 	"website": "Youtube"
     },
     {
-	"options": "-f bestaudio -x --embed-thumbnail",
+	"options": "-f bestaudio",
 	"uiName": "Best Available Audio Only",
 	"website": "Youtube"
+    },
+    {
+	"options": "-f bestaudio --extract-audio --audio-quality 0 --embed-thumbnail",
+	"uiName": "Best Available Audio Only+Thumbnail",
+	"website": "Youtube"
+    },
+    {
+	"options": "-f bestvideo[ext=mp4][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best[ext=mp4]/best",
+	"uiName": "Best Available Audio Video",
+	"website": "Other Websites"
+    },
+    {
+	"options": "-f bestaudio/worst --embed-thumbnail --extract-audio --audio-quality 0 --audio-format mp3",
+	"uiName": "Extract Audio As MP3",
+	"website": "Other Websites"
+    },
+    {
+	"options": "-f bestaudio/worst --extract-audio --audio-quality 0 --embed-thumbnail",
+	"uiName": "Extract Audio",
+	"website": "Other Websites"
     }
 ])R";
 }
 
 configure::presetEntry::presetEntry( const QString& ui,const QString& op,const QString& wb ) :
-	uiName( ui ),options( op ),website( wb )
+	uiName( ui ),options( op ),website( wb ),websiteTranslated( wb )
 {
-	if( uiName == "Best Available Audio Only" ){
+	if( uiName == "Extract Audio" ){
+
+		uiNameTranslated = QObject::tr( "Extract Audio" ) ;
+
+	}else if( uiName == "Extract Audio As MP3" ){
+
+		uiNameTranslated = QObject::tr( "Extract Audio As MP3" ) ;
+
+	}else if( uiName == "Best Available Audio Only" ){
 
 		uiNameTranslated = QObject::tr( "Best Available Audio Only" ) ;
 
@@ -1307,8 +1466,21 @@ configure::presetEntry::presetEntry( const QString& ui,const QString& op,const Q
 		auto m = QObject::tr( "Best Audio With Video Resolution Of %1" ) ;
 
 		uiNameTranslated = m.arg( uiName.mid( uiName.lastIndexOf( ' ' ) + 1 ) ) ;
+
+	}else if( uiName == "Best Available Audio Only+Thumbnail" ){
+
+		uiNameTranslated = QObject::tr( "Best Available Audio Only+Thumbnail" ) ;
 	}else{
 		uiNameTranslated = uiName ;
+	}
+
+	if( website == "Other Websites" ){
+
+		websiteTranslated = QObject::tr( "Other Websites" ) ;
+
+	}else if( website == "Youtube" ){
+
+		websiteTranslated = QObject::tr( "Youtube" ) ;
 	}
 }
 
@@ -1339,6 +1511,14 @@ void configure::downloadDefaultOptions::save()
 	f.write( QJsonDocument( m_array ).toJson( QJsonDocument::Indented ) ) ;
 }
 
+void configure::setVisibilityEditConfigFeature( bool e )
+{
+	m_ui.pbConfigureSaveEditOption->setVisible( e ) ;
+	m_ui.textEditConfigureEditOption->setVisible( e ) ;
+	m_ui.labelEditConfigOptions->setVisible( e ) ;
+	m_ui.pbConfigureSaveEditOptionCancel->setVisible( e ) ;
+}
+
 bool configure::downloadDefaultOptions::isEmpty( const QString& m )
 {
 	for( const auto& it : util::asConst( m_array ) ){
@@ -1354,20 +1534,39 @@ bool configure::downloadDefaultOptions::isEmpty( const QString& m )
 	return true ;
 }
 
+void configure::downloadDefaultOptions::replace( const QString& engineName,
+						 const QString& oldOptions,
+						 const QString& newOptions )
+{
+	for( int i = 0 ; i < m_array.size() ; i++ ){
+
+		auto obj = m_array[ i ].toObject() ;
+
+		auto e = obj.value( "engineName" ).toString() ;
+		auto o = obj.value( "options" ).toString() ;
+
+		if( e == engineName && o == oldOptions ){
+
+			obj.insert( "options",newOptions ) ;
+
+			m_array[ i ] = std::move( obj ) ;
+		}
+	}
+}
+
 QJsonObject configure::downloadDefaultOptions::addOpt( const QString& inUse,
 						       const QString& engineName,
 						       const QString& options )
 {
-	for( const auto& it : util::asConst( m_array ) ){
+	if( inUse == "yes" ){
 
-		auto obj = it.toObject() ;
+		for( int i = 0 ; i < m_array.size() ; i++ ){
 
-		auto a = obj.value( "options" ).toString() ;
-		auto b = obj.value( "engineName" ).toString() ;
+			auto obj = m_array[ i ].toObject() ;
 
-		if( a == options && b == engineName ){
+			obj.insert( "default","no" ) ;
 
-			return obj ;
+			m_array[ i ] = std::move( obj ) ;
 		}
 	}
 
@@ -1443,7 +1642,7 @@ void configure::downloadDefaultOptions::remove( const QJsonObject& e )
 
 			obj.insert( "default","yes" ) ;
 
-			m_array[ i ] = obj ;
+			m_array[ i ] = std::move( obj ) ;
 
 			break ;
 		}
@@ -1469,33 +1668,32 @@ void configure::downloadDefaultOptions::removeAll( const QString& e )
 	}() ){} ;
 }
 
-QJsonObject configure::downloadDefaultOptions::setAsDefault( const QJsonObject& e )
+void configure::downloadDefaultOptions::setAsDefault( const QJsonObject& e )
 {
+	for( int i = 0 ; i < m_array.size() ; i++ ){
+
+		auto obj = m_array[ i ].toObject() ;
+		obj.insert( "default","no" ) ;
+		m_array[ i ] = std::move( obj ) ;
+	}
+
 	auto engineName = e.value( "engineName" ).toString() ;
 	auto options = e.value( "options" ).toString() ;
-
-	QJsonObject xbj ;
 
 	for( int i = 0 ; i < m_array.size() ; i++ ){
 
 		auto obj = m_array[ i ].toObject() ;
+
 		auto engine = obj.value( "engineName" ).toString() ;
 		auto opts = obj.value( "options" ).toString() ;
 
-		if( engine == engineName ){
+		if( engine == engineName && options == opts ){
 
-			if( options == opts ){
+			obj.insert( "default","yes" ) ;
 
-				xbj = obj ;
+			m_array[ i ] = std::move( obj ) ;
 
-				obj.insert( "default","yes" ) ;
-			}else{
-				obj.insert( "default","no" ) ;
-			}
-
-			m_array[ i ] = obj ;
+			break ;
 		}
 	}
-
-	return xbj ;
 }

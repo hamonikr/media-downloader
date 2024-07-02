@@ -100,18 +100,70 @@ public:
 	const QString& windowsOnlyExeBinPath() ;
 	const QString& windowsOnlyDefaultPortableVersionDownloadFolder() ;
 
+	class mediaPlayer
+	{
+	public:
+		struct PlayerOpts
+		{
+			PlayerOpts( QString e,QString n ) :
+				exePath( std::move( e ) ),name( std::move( n ) )
+			{
+			}
+			QString exePath ;
+			QString name ;
+		} ;
+		class action
+		{
+		public:
+			action( const QString& url,
+				Logger& logger,
+				const settings::mediaPlayer::PlayerOpts& opts ) :
+				m_url( url ),m_playerOpts( opts ),m_logger( logger )
+			{
+			}
+			void operator()() const ;
+			void logError() const ;
+		private:
+			QString m_url ;
+			const settings::mediaPlayer::PlayerOpts& m_playerOpts ;
+			Logger& m_logger ;
+		} ;
+
+		mediaPlayer( const std::vector< settings::mediaPlayer::PlayerOpts >&,Logger& ) ;
+		const std::vector< settings::mediaPlayer::PlayerOpts >& opts() const
+		{
+			return m_playerOpts ;
+		}
+		bool valid() const
+		{
+			return !m_playerOpts.empty() ;
+		}
+		settings::mediaPlayer::action ac( const QString& url,
+						  const settings::mediaPlayer::PlayerOpts& opts ) const
+		{
+			return { url,m_logger,opts } ;
+		}
+	private:
+		const std::vector< settings::mediaPlayer::PlayerOpts >& m_playerOpts ;
+		Logger& m_logger ;
+	} ;
+
+	settings::mediaPlayer openWith( Logger& ) ;
+
+	void runCommandOnSuccessfulDownload( const QString&,const QString&,const QStringList& ) ;
+
 	QString downloadFolder() ;
 	QString libraryDownloadFolder() ;
 	QString downloadFolder( Logger& ) ;
 	QString localizationLanguagePath() ;
 	QString localizationLanguage() ;
-	QString commandOnSuccessfulDownload() ;
 	QString commandWhenAllFinished() ;
 	QString themeName() ;
 	QString defaultEngine( settings::tabName,const QString& ) ;
 	QString cookieFilePath( const QString& engineName ) ;
 	QString windowsDimensions( const QString& windowName ) ;
 	QString playlistRangeHistoryLastUsed() ;
+	QString gitHubDownloadUrl() ;
 	const QString& configPaths() ;
 	QString textEncoding() ;
 	QStringList getOptionsHistory( settings::tabName ) ;
@@ -126,12 +178,21 @@ public:
 
 	QPixmap defaultVideoThumbnailIcon( settings::tabName ) ;
 
+	bool desktopNotifyOnDownloadComplete() ;
+	bool desktopNotifyOnAllDownloadComplete() ;
+	bool libraryShowFolderFirst() ;
+	bool libraryArrangeAscending() ;
+	bool libraryArrangeByDate() ;
 	bool portableVersion() ;
 	bool monitorClipboardUrl( settings::tabName ) ;
 	bool enabledHighDpiScaling() ;
 	bool showTrayIcon() ;
 	bool autoDownload() ;
-	bool showVersionInfoWhenStarting() ;
+	bool downloadOptionsAsLast() ;
+	bool autoDownloadWhenAddedInBatchDownloader() ;
+	bool showVersionInfoAndAutoDownloadUpdates() ;
+	bool showLocalAndLatestVersionInformation() ;
+	bool showLocalVersionInformationOnly() ;
 	bool concurrentDownloading() ;
 	bool showMetaDataInBatchDownloader() ;
 	bool saveHistory() ;
@@ -139,12 +200,15 @@ public:
 	bool singleInstance() ;
 	bool autoSavePlaylistOnExit() ;
 	bool useInternalArchiveFile() ;
-	bool checkForUpdates() ;
 	bool enableLibraryTab() ;
 	bool checkForEnginesUpdates() ;
 	bool autoHideDownloadWhenCompleted() ;
+	bool deleteFilesOnCanceledDownload() ;
+	bool autoSetDefaultEngineAndOptions() ;
 
-	int textAlignment() ;
+	qint64 timeOutWaitingForClipboardData() ;
+
+	Qt::Alignment textAlignment() ;
 	int networkTimeOut() ;
 	int stringTruncationSize() ;
 	int historySize() ;
@@ -152,9 +216,18 @@ public:
 	int maxLoggerProcesses() ;
 	int thumbnailWidth( settings::tabName ) ;
 	int thumbnailHeight( settings::tabName ) ;
+	int desktopNotificationTimeOut() ;
 
+	void setOpenWith( const QString& ) ;
+	void setShowLocalVersionInformationOnly( bool ) ;
+	void setShowLocalAndLatestVersionInformation( bool ) ;
+	void setLibraryShowFolderFirst( bool ) ;
+	void setLibraryArrangeAscending( bool ) ;
+	void setLibraryArrangeByDate( bool ) ;
 	void setAutoHideDownloadWhenCompleted( bool ) ;
 	void setCheckForUpdates( bool ) ;
+	void setDesktopNotifyOnDownloadComplete( bool ) ;
+	void setDesktopNotifyOnAllDownloadComplete( bool ) ;
 	void setUseInternalArchiveFile( bool ) ;
 	void clearOptionsHistory( settings::tabName ) ;
 	void addToplaylistRangeHistory( const QString& ) ;
@@ -171,7 +244,7 @@ public:
 	void setMonitorClipboardUrl( bool,settings::tabName ) ;
 	void setShowMetaDataInBatchDownloader( bool ) ;
 	void setPlaylistDownloaderSaveHistory( bool ) ;
-	void setShowVersionInfoWhenStarting( bool ) ;
+	void setShowVersionInfoAndAutoDownloadUpdates( bool ) ;
 	void setThemeName( const QString& ) ;
 	void setPlaylistRangeHistoryLastUsed( const QString& ) ;
 	void setHighDpiScalingFactor( const QString& ) ;
@@ -183,7 +256,44 @@ public:
 	void setDownloadFolder( const QString& ) ;
 	void setLocalizationLanguage( const QString& language ) ;
 	void setWindowDimensions( const QString& window,const QString& dimenstion ) ;
-private:
+private:	
+	std::vector< settings::mediaPlayer::PlayerOpts > openWith() ;
+
+	QVariant getValue( const QString& opt,const QVariant& e )
+	{
+		if( !m_settings.contains( opt ) ){
+
+			m_settings.setValue( opt,e ) ;
+		}
+
+		return m_settings.value( opt ) ;
+	}
+
+	QByteArray getOption( const QString& opt,const QByteArray& e )
+	{
+		return this->getValue( opt,e ).toByteArray() ;
+	}
+
+	QString getOption( const QString& opt,const QString& e )
+	{
+		return this->getValue( opt,e ).toString() ;
+	}
+
+	bool getOption( const QString& opt,bool e )
+	{
+		return this->getValue( opt,e ).toBool() ;
+	}
+
+	int getOption( const QString& opt,int e )
+	{
+		return this->getValue( opt,e ).toInt() ;
+	}
+
+	QStringList getOption( const QString& opt,const QStringList& e )
+	{
+		return this->getValue( opt,e ).toStringList() ;
+	}
+
 	QString downloadFolder( Logger * ) ;
 
 	struct options

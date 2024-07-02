@@ -26,6 +26,7 @@
 
 #include "tabmanager.h"
 #include "mainwindow.h"
+#include "utils/threads.hpp"
 
 basicdownloader::basicdownloader( const Context& ctx ) :
 	m_ctx( ctx ),
@@ -35,16 +36,21 @@ basicdownloader::basicdownloader( const Context& ctx ) :
 	m_tableList( *m_ui.bdTableWidgetList,m_ctx.mainWidget().font() ),
 	m_bogusTable( m_bogusTableOriginal,m_ctx.mainWidget().font(),0,m_settings.textAlignment() )
 {
+	m_ui.pbPasteClipboard->setIcon( QIcon( ":/clipboard" ) ) ;
+	m_ui.pbOptionsHistory->setIcon( QIcon( ":/recentlyUsed" ) ) ;
+	m_ui.pbOptionsDownloadOptions->setIcon( QIcon( ":/downloadOptions" ) ) ;
+
 	this->setAsActive() ;
 
 	m_ui.pbCancel->setEnabled( false ) ;
 
 	m_tableList.setVisible( false ) ;
 
+	m_tableList.setUpHeaderMenu() ;
+
 	tableWidget::tableWidgetOptions opts ;
 
-	opts.customContextPolicy = Qt::NoContextMenu ;
-	opts.selectionMode       = QAbstractItemView::ExtendedSelection ;
+	opts.selectionMode = QAbstractItemView::ExtendedSelection ;
 
 	m_tableList.setTableWidget( opts ) ;
 
@@ -53,11 +59,25 @@ basicdownloader::basicdownloader( const Context& ctx ) :
 		m_ui.lineEditURL->setText( utility::clipboardText() ) ;
 	} ) ;
 
-	m_tableList.connect( &QTableWidget::itemClicked,[ this ]( QTableWidgetItem * item ){
+	m_tableList.connect( &QTableWidget::itemSelectionChanged,[ this ](){
 
-		if( item ){
+		auto& a = *m_ui.lineEditOptions ;
+		m_tableList.selectMediaOptions( m_optionsList,a ) ;
+	} ) ;
 
-			m_tableList.selectMediaOptions( m_optionsList,*item,*m_ui.lineEditOptions ) ;
+	auto cm = &QTableWidget::customContextMenuRequested ;
+
+	m_tableList.connect( cm,[ this ]( const QPoint& ){
+
+		auto row = m_tableList.currentRow() ;
+
+		if( row != -1 ){
+
+			const auto& obj = m_tableList.stuffAt( row ).toqJsonObject() ;
+
+			auto arr = obj.value( "urls" ).toArray() ;
+
+			utility::contextMenuForDirectUrl( arr,m_ctx ) ;
 		}
 	} ) ;
 
@@ -65,7 +85,9 @@ basicdownloader::basicdownloader( const Context& ctx ) :
 
 		auto& t = m_ctx.TabManager().Configure() ;
 
-		t.engineDefaultDownloadOptions( this->defaultEngineName(),[ this ]( const QString& e ){
+		auto m = this->defaultEngineName() ;
+
+		t.engineDefaultDownloadOptions( m,[ this ]( const QString& e ){
 
 			m_extraOptions.hasExtraOptions = true ;
 			m_extraOptions.downloadOptions = e ;
@@ -90,15 +112,18 @@ basicdownloader::basicdownloader( const Context& ctx ) :
 
 	connect( m_ui.pbOptionsHistory,&QPushButton::clicked,[ this ](){
 
-		auto s = utility::showHistory( *m_ui.lineEditOptions,
-					       m_settings.getOptionsHistory( settings::tabName::basic ),
-					       m_settings,settings::tabName::basic ) ;
+		auto& a = *m_ui.lineEditOptions ;
+		auto b = m_settings.getOptionsHistory( settings::tabName::basic ) ;
+		auto c = settings::tabName::basic ;
 
-		if( s ){
+		if( utility::showHistory( a,b,m_settings,c ) ){
 
-			m_tableList.setVisible( false ) ;
+			if( m_settings.autoDownload() ){
 
-			this->download( m_ui.lineEditURL->text() ) ;
+				m_tableList.setVisible( false ) ;
+
+				this->download( m_ui.lineEditURL->text() ) ;
+			}
 		}
 	} ) ;
 
@@ -146,7 +171,9 @@ void basicdownloader::changeDefaultEngine( int s )
 		m_ctx.TabManager().setDefaultEngines() ;
 	}else{
 		auto id = utility::concurrentID() ;
-		m_ctx.logger().add( "Error: basicdownloader::basicdownloader: Unknown Engine:" + m_ui.cbEngineType->itemText( s ),id ) ;
+		auto m = "Error: basicdownloader::basicdownloader: Unknown Engine:" ;
+
+		m_ctx.logger().add( m + m_ui.cbEngineType->itemText( s ),id ) ;
 	}
 }
 
@@ -204,7 +231,8 @@ basicdownloader& basicdownloader::hideTableList()
 
 QString basicdownloader::defaultEngineName()
 {
-	return m_settings.defaultEngine( settings::tabName::basic,m_ctx.Engines().defaultEngineName() ) ;
+	const auto& m = m_ctx.Engines().defaultEngineName() ;
+	return m_settings.defaultEngine( settings::tabName::basic,m ) ;
 }
 
 basicdownloader::engine basicdownloader::defaultEngine()
@@ -224,11 +252,10 @@ void basicdownloader::updateEnginesList( const QStringList& e )
 		comboBox.addItem( it ) ;
 	}
 
+	auto m = this->defaultEngineName() ;
 	auto s = settings::tabName::basic ;
 
-	utility::setUpdefaultEngine( comboBox,
-				     this->defaultEngineName(),
-				     [ this,s ]( const QString& e ){ m_settings.setDefaultEngine( e,s ) ; } ) ;
+	utility::setUpdefaultEngine( comboBox,m,m_settings,s ) ;
 }
 
 void basicdownloader::clipboardData( const QString& )
@@ -254,9 +281,9 @@ void basicdownloader::listRequested( const QByteArray& a,int id )
 
 		if( ee.size() ){
 
-			for( const auto& m : ee ){
+			for( const auto& m : ee ){				
 
-				m_tableList.add( m.toStringList(),m ) ;
+				m_tableList.add( m ) ;
 			}
 
 			m_tableList.setEnabled( true ) ;
@@ -312,13 +339,21 @@ void basicdownloader::download( const QString& url )
 				      m_ui.lineEditOptions->text(),
 				      settings::tabName::basic ) ;
 
-	auto m = util::split( url,' ',true ) ;
+	auto m = util::splitPreserveQuotes( url ) ;
+
+	if( m.size() ){
+
+		if( m[ 0 ] == "yt-dlp" ){
+
+			m.removeAt( 0 ) ;
+		}
+	}
 
 	const auto& engine = this->defaultEngine() ;
 
 	m_bogusTable.clear() ;
 
-	auto uiText = m.at( 0 ) ;
+	auto uiText = m.last() ;
 	auto state = downloadManager::finishedStatus::notStarted() ;
 
 	tableWidget::entry entry ;
@@ -327,7 +362,7 @@ void basicdownloader::download( const QString& url )
 	entry.url    = uiText ;
 	entry.runningState = state ;
 
-	m_bogusTable.addItem( std::move( entry ) ) ;
+	m_bogusTable.addItem( entry.move() ) ;
 
 	auto e = m_extraOptions.downloadOptions ;
 
@@ -400,66 +435,171 @@ void basicdownloader::download( const basicdownloader::engine& engine,
 void basicdownloader::run( const basicdownloader::engine& eng,
 			   const QStringList& args,
 			   const QString& credentials,
-			   bool list_requested )
+			   bool getList )
 {
-	auto id = eng.id ;
-	const auto& engine = eng.engine ;
+	class events
+	{
+	public:
+		events( basicdownloader& p,int id,bool l,const engines::engine& engine ) :
+			m_parent( p ),m_engine( engine ),m_id( id ),m_getList( l )
+		{
+			const auto& s = m_engine.name() ;
 
-	auto functions = utility::OptionsFunctions( [ this,id ]( const engines::ProcessExitState&,const QByteArray& args ){
+			if( s == "yt-dlp" || s == "ytdl-patched" ){
 
-			this->listRequested( args,id ) ;
-
-		},[ this ]( const basicdownloader::opts& opts ){
-
-			opts.ctx.TabManager().disableAll() ;
-
-			m_ui.pbCancel->setEnabled( true ) ;
-
-		},[ this ]( engines::ProcessExitState m,const basicdownloader::opts& opts ){
-
-			opts.ctx.TabManager().enableAll() ;
-
-			m_ui.pbCancel->setEnabled( false ) ;
-
-			if( !opts.listRequested ){
-
-				auto e = downloadManager::finishedStatus::state::done ;
-
-				auto a = downloadManager::finishedStatus( e,std::move( m ) ) ;
-
-				auto& s = opts.ctx.Settings() ;
-
-				utility::updateFinishedState( opts.engine,s,opts.table,std::move( a ) ) ;
+				auto m = m_parent.m_settings.deleteFilesOnCanceledDownload() ;
+				m_deleteTempFilesOnCancel = m ;
+			}else{
+				m_deleteTempFilesOnCancel = false ;
 			}
 		}
-	 ) ;
+		void done( engines::ProcessExitState m,const QStringList& fileNames )
+		{
+			m_parent.m_ctx.TabManager().enableAll() ;
 
-	basicdownloader::opts opts{ engine,m_bogusTable,m_ctx,m_ctx.debug(),list_requested,-1 } ;
+			m_parent.m_ui.pbCancel->setEnabled( false ) ;
 
-	auto oopts  = basicdownloader::make_options( engine,std::move( opts ),std::move( functions ) ) ;
-	auto logger = LoggerWrapper( m_ctx.logger(),id ) ;
+			if( m_getList ){
+
+				m_parent.listRequested( m_listData,m_id ) ;
+			}else{
+				auto e = downloadManager::finishedStatus::state::done ;
+
+				auto a = downloadManager::finishedStatus( e,m.move() ) ;
+
+				auto& s = m_parent.m_ctx.Settings() ;
+
+				auto& t = m_parent.m_bogusTable ;
+
+				utility::updateFinishedState( m_engine,s,t,a.move(),fileNames ) ;
+
+				if( m.cancelled() && m_deleteTempFilesOnCancel ){
+
+					this->deleteTempFiles() ;
+				}
+
+				if( m.success() ){
+
+					const auto& s = m_parent.m_ctx ;
+
+					if( s.Settings().desktopNotifyOnDownloadComplete() ){
+
+						s.mainWindow().notifyOnDownloadComplete() ;
+
+					}else if( s.Settings().desktopNotifyOnAllDownloadComplete() ){
+
+						s.mainWindow().notifyOnDownloadComplete() ;
+					}
+				}
+			}
+		}
+		void disableAll()
+		{
+			m_parent.m_ctx.TabManager().disableAll() ;
+
+			m_parent.m_ui.pbCancel->setEnabled( true ) ;
+		}
+		bool addData( const QByteArray& e )
+		{
+			if( m_deleteTempFilesOnCancel ){
+
+				this->addFilesToDelete( e ) ;
+			}
+
+			if( m_getList ){
+
+				m_listData += e ;
+
+				return utility::addData( e ) ;
+			}else{
+				return true ;
+			}
+		}
+		const engines::engine& engine()
+		{
+			return m_engine ;
+		}
+		utility::ProcessOutputChannels outPutChannel( const engines::engine& engine )
+		{
+			if( m_getList ){
+
+				auto m = QProcess::ProcessChannel::StandardOutput ;
+
+				engine.updateOutPutChannel( m ) ;
+
+				return utility::ProcessOutputChannels( m ) ;
+			}else{
+				return utility::ProcessOutputChannels() ;
+			}
+		}
+		int index()
+		{
+			return -1 ;
+		}
+		void printOutPut( const QByteArray& e )
+		{
+			m_parent.m_ctx.debug( m_id,e ) ;
+		}
+		QString downloadFolder()
+		{
+			return m_parent.m_settings.downloadFolder() ;
+		}
+		events move()
+		{
+			return std::move( *this ) ;
+		}
+	private:
+		void addFileToDelete( const QByteArray& fileName )
+		{
+			for( const auto& it : m_fileNames ){
+
+				if( it == fileName ){
+
+					return ;
+				}
+			}
+
+			m_fileNames.emplace_back( fileName ) ;
+		}
+		void addFilesToDelete( const QByteArray& e )
+		{
+			for( const auto& it : util::split( e,'\n' ) ){
+
+				if( it.startsWith( "[download] Destination:" ) ){
+
+					this->addFileToDelete( it.mid( 24 ) ) ;
+				}
+			}
+		}
+		void deleteTempFiles()
+		{
+			utility::deleteTmpFiles( this->downloadFolder(),std::move( m_fileNames ) ) ;
+		}
+		basicdownloader& m_parent ;
+		const engines::engine& m_engine ;
+		int m_id ;
+		bool m_getList ;
+		bool m_deleteTempFilesOnCancel ;
+		QByteArray m_listData ;
+		std::vector< QByteArray > m_fileNames ;
+	} ;
+
+	events ev( *this,eng.id,getList,eng.engine ) ;
+
+	auto ch     = ev.outPutChannel( eng.engine ) ;
+	auto logger = LoggerWrapper( m_ctx.logger(),eng.id ) ;
 	auto term   = m_terminator.setUp( m_ui.pbCancel,&QPushButton::clicked,-1 ) ;
 
-	auto ctx = utility::make_ctx( engine,std::move( oopts ),std::move( logger ),std::move( term ),[ & ](){
+	auto ctx = utility::make_ctx( ev.move(),logger.move(),term.move(),ch ) ;
 
-		if( list_requested ){
-
-			auto m = QProcess::ProcessChannel::StandardOutput ;
-
-			engine.updateOutPutChannel( m ) ;
-
-			return utility::ProcessOutputChannels( m ) ;
-		}else{
-			return utility::ProcessOutputChannels() ;
-		}
-	}() ) ;
-
-	utility::run( args,credentials,std::move( ctx ) ) ;
+	utility::run( args,credentials,ctx.move() ) ;
 }
 
 void basicdownloader::tabEntered()
 {
-	auto m = m_settings.lastUsedOption( m_ui.cbEngineType->currentText(),settings::tabName::basic ) ;
+	auto e = m_ui.cbEngineType->currentText() ;
+	auto m = m_settings.lastUsedOption( e,settings::tabName::basic ) ;
+
 	m_ui.lineEditOptions->setText( m ) ;
 	m_ui.lineEditURL->setFocus() ;
 	m_ctx.logger().updateView( true ) ;
@@ -511,6 +651,11 @@ void basicdownloader::disableAll()
 
 void basicdownloader::exiting()
 {
+}
+
+void basicdownloader::textAlignmentChanged( Qt::LayoutDirection m )
+{
+	utility::alignText( m,m_ui.label,m_ui.label_2,m_ui.labelEngineName ) ;
 }
 
 void basicdownloader::gotEvent( const QJsonObject& )

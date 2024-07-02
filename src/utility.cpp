@@ -119,9 +119,13 @@ bool utility::platformIsWindows()
 #include <libloaderapi.h>
 #include <winuser.h>
 #include <winbase.h>
+#include <dwmapi.h>
+#include <winreg.h>
 
 #include <array>
 #include <cstring>
+
+#include <QOperatingSystemVersion>
 
 bool utility::platformIsWindows()
 {
@@ -231,13 +235,32 @@ QString utility::windowsGateWayAddress()
 	return adaptorInfo().address() ;
 }
 
-QString utility::windowsGetClipBoardText( const Context& ctx )
+QString utility::windowsGetClipBoardText( const ContextWinId& wId )
 {
-	QString s ;
+	class String
+	{
+	public:
+		void operator=( const char * s )
+		{
+			m_value = s ;
+		}
+		void operator=( const wchar_t * s )
+		{
+			m_value = QString::fromWCharArray( s ) ;
+		}
+		operator QString()
+		{
+			return m_value ;
+		}
+	private:
+		QString m_value ;
+	} ;
+
+	String s ;
 
 	if( IsClipboardFormatAvailable( CF_TEXT ) ){
 
-		if( OpenClipboard( HWND( ctx.mainWidget().winId() ) ) ){
+		if( OpenClipboard( wId.value() ) ){
 
 			auto hglb = GetClipboardData( CF_TEXT ) ;
 
@@ -260,9 +283,290 @@ QString utility::windowsGetClipBoardText( const Context& ctx )
 	return s ;
 }
 
+void utility::windowsSetDarkModeTitleBar( const Context& ctx )
+{
+	auto os = QOperatingSystemVersion::OSType::Windows ;
+
+	auto minVersion = QOperatingSystemVersion( os,10,0,17763 ) ;
+
+	auto currentVersion = QOperatingSystemVersion::current() ;
+
+	if( currentVersion >= minVersion ){
+
+		auto m = ctx.nativeHandleToMainWindow().value() ;
+
+		BOOL dark = 1 ;
+
+		DWORD DWMWA_USE_IMMERSIVE_DARK_MODE = 20 ;
+
+		if( DwmSetWindowAttribute( m,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof( BOOL ) ) ){
+
+			DWMWA_USE_IMMERSIVE_DARK_MODE = 19 ;
+
+			DwmSetWindowAttribute( m,DWMWA_USE_IMMERSIVE_DARK_MODE,&dark,sizeof( BOOL ) ) ;
+		}
+	}
+}
+
+std::vector< utility::PlayerOpts > utility::getMediaPlayers()
+{
+	class buffer
+	{
+	public:
+		buffer()
+		{
+			m_buffer[ 0 ] = '\0' ;
+		}
+		DWORD * size()
+		{
+			return &m_size ;
+		}
+		bool valid()
+		{
+			auto m = m_buffer.data() ;
+
+			if( m[ 0 ] == '\0' ){
+
+				return false ;
+			}
+
+			auto equal = [ & ]( const char * b ){
+
+				return std::strcmp( m,b ) == 0 ;
+			} ;
+
+			auto endsWith = [ & ]( const char * b,size_t len ){
+
+				auto a = static_cast< int >( m_size ) ;
+				auto l = static_cast< int >( len ) ;
+
+				if( a < l ){
+
+					return false ;
+				}else{
+					auto aa = static_cast< size_t >( m_size ) ;
+
+					return std::memcmp( m + aa - len,b,len ) == 0 ;
+				}
+			} ;
+
+			if( equal( ".mp4" ) || equal( ".MP4" ) ){
+
+				return false ;
+			}else{
+				return endsWith( ".mp4",4 ) || endsWith( ".MP4",4 ) ;
+			}
+		}
+		operator char*()
+		{
+			return m_buffer.data() ;
+		}
+		operator const char*() const
+		{
+			return m_buffer.data() ;
+		}
+		operator QString()
+		{
+			return m_buffer.data() ;
+		}
+	private:
+		std::array< char,4096 > m_buffer ;
+		DWORD m_size = 4096 ;
+	} ;
+
+	class Hkey
+	{
+	public:
+		Hkey( Hkey& hkey,const buffer& subKey ) :
+			m_status( this->open( hkey,subKey,hkey.regSam() ) )
+		{
+		}
+		Hkey() : m_status( this->open( HKEY_CLASSES_ROOT,nullptr ) )
+		{
+		}
+		~Hkey()
+		{
+			if( m_key ){
+
+				RegCloseKey( m_key ) ;
+			}
+		}
+		DWORD keyCount()
+		{
+			auto N = nullptr ;
+
+			DWORD keyCount = 0 ;
+
+			auto st = RegQueryInfoKeyA( m_key,N,N,N,&keyCount,N,N,N,N,N,N,N ) ;
+
+			if( st == ERROR_SUCCESS ){
+
+				return keyCount ;
+			}else{
+				return 0 ;
+			}
+		}
+		QString getExePath()
+		{
+			auto N = nullptr ;
+
+			buffer subKey ;
+
+			auto path = "shell\\open\\command" ;
+
+			auto st = RegGetValueA( m_key,path,N,RRF_RT_REG_SZ,N,subKey,subKey.size() ) ;
+
+			if( st == ERROR_SUCCESS ){
+
+				return subKey ;
+			}else{
+				return {} ;
+			}
+		}
+		buffer getSubKey( DWORD i )
+		{
+			auto N = nullptr ;
+
+			buffer subKey ;
+
+			auto st = RegEnumKeyExA( m_key,i,subKey,subKey.size(),N,N,N,N ) ;
+
+			if( st == ERROR_SUCCESS ){
+
+				return subKey ;
+			}else{
+				return {} ;
+			}
+		}
+		operator HKEY()
+		{
+			return m_key ;
+		}
+		operator bool()
+		{
+			return m_status == ERROR_SUCCESS ;
+		}
+		REGSAM regSam()
+		{
+			return m_regSam ;
+		}
+	private:
+		LSTATUS open( HKEY hkey,const char * subKey )
+		{
+			REGSAM wow64 = KEY_READ | KEY_WOW64_64KEY ;
+			REGSAM wow32 = KEY_READ | KEY_WOW64_32KEY ;
+
+			auto st = this->open( hkey,subKey,wow64 ) ;
+
+			if( st == ERROR_SUCCESS ){
+
+				m_regSam = wow64 ;
+			}else{
+				st = this->open( hkey,subKey,wow32 ) ;
+
+				if( st == ERROR_SUCCESS ){
+
+					m_regSam = wow32 ;
+				}
+			}
+
+			return st ;
+		}
+		LSTATUS open( HKEY hkey,const char * subKey,REGSAM regSam )
+		{
+			DWORD x = 0 ;
+
+			return RegOpenKeyExA( hkey,subKey,x,regSam,&m_key ) ;
+		}
+		HKEY m_key = nullptr ;
+		LSTATUS m_status ;
+		REGSAM m_regSam ;
+	} ;
+
+	Hkey rootKey ;
+
+	if( !rootKey ){
+
+		return {} ;
+	}
+
+	std::vector< utility::PlayerOpts > s ;
+
+	auto keyCount = rootKey.keyCount() ;
+
+	for( DWORD i = 0 ; i < keyCount ; i++ ){
+
+		auto subKey = rootKey.getSubKey( i ) ;
+
+		if( !subKey.valid() ){
+
+			continue ;
+		}
+
+		Hkey key( rootKey,subKey ) ;
+
+		if( !key ){
+
+			continue ;
+		}
+
+		auto p = util::splitPreserveQuotes( key.getExePath() ) ;
+
+		if( p.size() ){
+
+			auto m = p.first() ;
+
+			if( m.endsWith( "wmplayer.exe" ) ){
+
+				s.emplace_back( m,"Windows Media Player" ) ;
+			}else{
+				auto na = util::split( subKey,"." ) ;
+
+				s.emplace_back( m,na.first() ) ;
+			}
+		}
+	}
+
+	return s ;
+}
+
 #else
 
-QString utility::windowsGetClipBoardText( const Context& )
+std::vector< utility::PlayerOpts > utility::getMediaPlayers()
+{
+	std::vector< utility::PlayerOpts > m ;
+
+	struct app
+	{
+		app( const char * u,const char * e ) : uiName( u ),exeName( e )
+		{
+		}
+		const char * uiName ;
+		const char * exeName ;
+	};
+
+	std::array< app,3 > apps = { { { "VLC","vlc" },
+				       { "SMPlayer","smplayer" },
+				       { "MPV","mpv" } } } ;
+
+	for( const auto& it : apps ){
+
+		auto s = QStandardPaths::findExecutable( it.exeName ) ;
+
+		if( !s.isEmpty() ){
+
+			m.emplace_back( s,it.uiName ) ;
+		}
+	}
+
+	return m ;
+}
+
+void utility::windowsSetDarkModeTitleBar( const Context& )
+{
+}
+
+QString utility::windowsGetClipBoardText( const ContextWinId& )
 {
 	return {} ;
 }
@@ -275,6 +579,46 @@ QString utility::windowsApplicationDirPath()
 QString utility::windowsGateWayAddress()
 {
 	return {} ;
+}
+
+#endif
+
+#ifdef Q_OS_WIN
+
+#if QT_VERSION >= QT_VERSION_CHECK( 6,6,0 )
+
+void utility::checkPermissions::enable()
+{
+}
+
+void utility::checkPermissions::disable()
+{
+}
+
+#else
+
+extern Q_CORE_EXPORT int qt_ntfs_permission_lookup ;
+
+void utility::checkPermissions::enable()
+{
+	qt_ntfs_permission_lookup++ ;
+}
+
+void utility::checkPermissions::disable()
+{
+	qt_ntfs_permission_lookup-- ;
+}
+
+#endif
+
+#else
+
+void utility::checkPermissions::enable()
+{
+}
+
+void utility::checkPermissions::disable()
+{
 }
 
 #endif
@@ -447,12 +791,12 @@ QMenu * utility::setUpMenu( const Context& ctx,
 				if( it.website.isEmpty() ){
 
 					translator::entry ss( QObject::tr( "Preset Options" ),"","" ) ;
-					tr.addAction( menu,std::move( ss ) )->setEnabled( false ) ;
+					tr.addAction( menu,ss.move() )->setEnabled( false ) ;
 				}else{
 					auto m = QObject::tr( "%1 Preset Options" ).arg( it.website ) ;
 
 					translator::entry ss( m,"","" ) ;
-					tr.addAction( menu,std::move( ss ),false )->setEnabled( false ) ;
+					tr.addAction( menu,ss.move(),false )->setEnabled( false ) ;
 				}
 
 				for( const auto& xt : it.values ){
@@ -473,9 +817,11 @@ QMenu * utility::setUpMenu( const Context& ctx,
 
 		if( combineText ){
 
-			mm.add( e.website,e.uiNameTranslated,e.options + "\n" + e.uiNameTranslated ) ;
+			auto m = e.options + "\n" + e.uiNameTranslated ;
+
+			mm.add( e.websiteTranslated,e.uiNameTranslated,m ) ;
 		}else{
-			mm.add( e.website,e.uiNameTranslated,e.options ) ;
+			mm.add( e.websiteTranslated,e.uiNameTranslated,e.options ) ;
 		}
 	} ) ;
 
@@ -485,22 +831,20 @@ QMenu * utility::setUpMenu( const Context& ctx,
 
 		menu->addSeparator() ;
 
-		translator::entry sx( QObject::tr( "Clear" ),
-						   utility::selectedAction::CLEARSCREEN,
-						   utility::selectedAction::CLEARSCREEN ) ;
+		auto m = utility::selectedAction::CLEARSCREEN ;
+		translator::entry sx( QObject::tr( "Clear" ),m,m ) ;
 
-		tr.addAction( menu,std::move( sx ) ) ;
+		tr.addAction( menu,sx.move() ) ;
 	}
 
 	if( addOpenFolder ){
 
 		menu->addSeparator() ;
 
-		translator::entry mm( QObject::tr( "Open Download Folder" ),
-						   utility::selectedAction::OPENFOLDER,
-						   utility::selectedAction::OPENFOLDER ) ;
+		auto m = utility::selectedAction::OPENFOLDER ;
+		translator::entry mm( QObject::tr( "Open Download Folder" ),m,m ) ;
 
-		tr.addAction( menu,std::move( mm ) ) ;
+		tr.addAction( menu,mm.move() ) ;
 	}
 
 	return menu ;
@@ -553,7 +897,7 @@ void utility::openDownloadFolderPath( const QString& url )
 	}
 }
 
-QStringList utility::updateOptions( const updateOptionsStruct& s )
+QStringList utility::updateOptions( const utility::updateOptionsStruct& s )
 {
 	const tableWidget::entry& ent  = s.tableEntry ;
 	const engines::engine& engine  = s.engine ;
@@ -604,19 +948,9 @@ QStringList utility::updateOptions( const updateOptionsStruct& s )
 
 	auto url = urls ;
 
-	engine.updateDownLoadCmdOptions( { args.uiDownloadOptions(),
-					   args.otherOptions(),
-					   uiIndex,
-					   args.credentials(),
-					   ent.playlist,
-					   ent.playlist_count,
-					   ent.playlist_id,
-					   ent.playlist_title,
-					   ent.playlist_uploader,
-					   ent.playlist_uploader_id,
-					   ent.n_entries,
-					   url,
-					   opts } ) ;
+	engines::engine::baseEngine::updateOpts ups( args,ent,uiIndex,url,opts ) ;
+
+	engine.updateDownLoadCmdOptions( ups,settings.downloadOptionsAsLast() ) ;
 
 	const auto& ca = engine.cookieArgument() ;
 	const auto& cv = settings.cookieFilePath( engine.name() ) ;
@@ -863,62 +1197,17 @@ static QString _intValue( QJsonObject& obj,const char * key )
 	return QString::number( obj.value( key ).toInt() ) ;
 }
 
-utility::MediaEntry::MediaEntry( const QByteArray& data ) : m_json( data )
+utility::MediaEntry::MediaEntry( const QJsonDocument& doc ) : m_json( doc )
+{
+	this->parseJson() ;
+}
+
+utility::MediaEntry::MediaEntry( const engines::engine& engine,const QByteArray& data ) :
+	m_json( engine.parsePlayListData( data ) )
 {
 	if( m_json ){
 
-		auto object = m_json.doc().object() ;
-
-		m_formats              = object.value( "formats" ).toArray() ;
-
-		m_title                = _stringValue( object,"title" ) ;
-		m_url                  = _stringValue( object,"webpage_url" ) ;
-		m_uploadDate           = _stringValue( object,"upload_date" ) ;
-		m_id                   = _stringValue( object,"id" ) ;
-		m_thumbnailUrl         = _stringValue( object,"thumbnail" ) ;
-		m_uploader             = _stringValue( object,"uploader" ) ;
-		m_playlist             = _stringValue( object,"playlist" ) ;
-		m_playlist_id          = _stringValue( object,"playlist_id" ) ;
-		m_playlist_title       = _stringValue( object,"playlist_title" ) ;
-		m_playlist_uploader    = _stringValue( object,"playlist_uploader" ) ;
-		m_playlist_uploader_id = _stringValue( object,"playlist_uploader_id" ) ;
-
-		m_n_entries            = _intValue( object,"n_entries" ) ;
-		m_playlist_count       = _intValue( object,"playlist_count" ) ;
-
-		if( m_uploadDate.size() == 8 ){
-
-			auto year  = m_uploadDate.mid( 0,4 ).toInt() ;
-			auto month = m_uploadDate.mid( 4,2 ).toInt() ;
-			auto day   = m_uploadDate.mid( 6,2 ).toInt() ;
-
-			QDate d ;
-
-			if( d.setDate( year,month,day ) ){
-
-				m_uploadDate = d.toString() ;
-			}
-		}
-
-		if( !m_uploadDate.isEmpty() ){
-
-			m_uploadDate = utility::stringConstants::uploadDate() + " " + m_uploadDate ;
-		}
-
-		auto duration = object.value( "duration" ) ;
-
-		if( duration.isDouble() ){
-
-			m_intDuration = static_cast< int >( duration.toDouble() ) ;
-		}else{
-			m_intDuration = duration.toInt() ;
-		}
-
-		if( m_intDuration != 0 ){
-
-			auto s = engines::engine::functions::timer::duration( m_intDuration * 1000 ) ;
-			m_duration = utility::stringConstants::duration() + " " + s ;
-		}
+		this->parseJson() ;
 	}
 }
 
@@ -966,6 +1255,62 @@ QJsonObject utility::MediaEntry::uiJson() const
 	obj.insert( "uploader",m_uploader ) ;
 
 	return obj ;
+}
+
+void utility::MediaEntry::parseJson()
+{
+	auto object = m_json.doc().object() ;
+
+	m_formats              = object.value( "formats" ).toArray() ;
+
+	m_title                = _stringValue( object,"title" ) ;
+	m_url                  = _stringValue( object,"webpage_url" ) ;
+	m_uploadDate           = _stringValue( object,"upload_date" ) ;
+	m_id                   = _stringValue( object,"id" ) ;
+	m_thumbnailUrl         = _stringValue( object,"thumbnail" ) ;
+	m_uploader             = _stringValue( object,"uploader" ) ;
+	m_playlist             = _stringValue( object,"playlist" ) ;
+	m_playlist_id          = _stringValue( object,"playlist_id" ) ;
+	m_playlist_title       = _stringValue( object,"playlist_title" ) ;
+	m_playlist_uploader    = _stringValue( object,"playlist_uploader" ) ;
+	m_playlist_uploader_id = _stringValue( object,"playlist_uploader_id" ) ;
+
+	m_n_entries            = _intValue( object,"n_entries" ) ;
+	m_playlist_count       = _intValue( object,"playlist_count" ) ;
+
+	if( m_uploadDate.size() == 8 ){
+
+		auto year  = m_uploadDate.mid( 0,4 ).toInt() ;
+		auto month = m_uploadDate.mid( 4,2 ).toInt() ;
+		auto day   = m_uploadDate.mid( 6,2 ).toInt() ;
+
+		QDate d ;
+
+		if( d.setDate( year,month,day ) ){
+
+			m_uploadDate = d.toString() ;
+		}
+	}
+
+	if( !m_uploadDate.isEmpty() ){
+
+		m_uploadDate = utility::stringConstants::uploadDate() + " " + m_uploadDate ;
+	}
+
+	auto duration = object.value( "duration" ) ;
+
+	if( duration.isDouble() ){
+
+		m_intDuration = static_cast< int >( duration.toDouble() ) ;
+	}else{
+		m_intDuration = duration.toInt() ;
+	}
+
+	if( m_intDuration != 0 ){
+
+		auto s = engines::engine::baseEngine::timer::duration( m_intDuration * 1000 ) ;
+		m_duration = utility::stringConstants::duration() + " " + s ;
+	}
 }
 
 const engines::engine& utility::resolveEngine( const tableWidget& table,
@@ -1142,7 +1487,7 @@ bool utility::onlyWantedVersionInfo( const utility::cliArguments& args )
 {
 	if( args.contains( "--version" ) ){
 
-		std::cout << util::split( VERSION,'\n' ).at( 0 ).constData() << std::endl ;
+		std::cout << utility::compileTimeVersion().toUtf8().constData() << std::endl ;
 
 		return true ;
 	}else{
@@ -1162,7 +1507,7 @@ static util::version _get_process_version( const QString& path,
 
 		if( file.open( QIODevice::ReadOnly ) ){
 
-			util::version m = file.readAll() ;
+			util::version m = file.readAll().trimmed() ;
 
 			if( m.valid() ){
 
@@ -1236,8 +1581,11 @@ bool utility::startedUpdatedVersion( settings& s,const utility::cliArguments& ca
 
 		auto exeDirPath = utility::windowsApplicationDirPath() ;
 
-		env.insert( "PATH",exeDirPath + ";" + env.value( "PATH" ) ) ;
-		env.insert( "QT_PLUGIN_PATH",exeDirPath ) ;
+		if( !QFile::exists( mm + "/platforms" ) ){
+
+			env.insert( "PATH",exeDirPath + ";" + env.value( "PATH" ) ) ;
+			env.insert( "QT_PLUGIN_PATH",exeDirPath ) ;
+		}
 
 		util::version uv = _get_process_version( mm,exePath,env ) ;
 
@@ -1313,13 +1661,44 @@ QString utility::aboutVersionInfo()
 	}
 }
 
+QString utility::compileTimeVersion()
+{
+	QString m = VERSION ;
+	m.replace( ".git_tag","" ) ;
+
+	auto s = util::split( m,"." ) ;
+
+	QString e ;
+
+	if( s.size() ){
+
+		auto max = s.size() >= 4 ? 4 : s.size() ;
+
+		e = s[ 0 ] ;
+
+		for( int i = 1 ; i < max ; i++ ){
+
+			e += "." + s[ i ] ;
+		}
+	}
+
+	return e ;
+}
+
+bool utility::runningGitVersion()
+{
+	auto m = utility::runningVersionOfMediaDownloader() ;
+
+	return util::split( m,"." ).size() > 3 ;
+}
+
 QString utility::runningVersionOfMediaDownloader()
 {
 	const auto& e = _runTimeVersions().instanceVersion() ;
 
 	if( e.isEmpty() ){
 
-		return VERSION ;
+		return utility::compileTimeVersion() ;
 	}else{
 		return e ;
 	}
@@ -1455,14 +1834,6 @@ void utility::setPermissions( const QString& e )
 	utility::setPermissions( s ) ;
 }
 
-void utility::networkReply::invoke( QObject * obj,const char * member )
-{
-	QMetaObject::invokeMethod( obj,
-				   member,
-				   Qt::QueuedConnection,
-				   Q_ARG( utility::networkReply,*this ) ) ;
-}
-
 void utility::networkReply::getData( const Context& ctx,const utils::network::reply& reply )
 {
 	if( reply.success() ){
@@ -1574,28 +1945,6 @@ const QStringList& utility::cliArguments::arguments() const
 	return m_args ;
 }
 
-#ifdef Q_OS_WIN
-
-extern Q_CORE_EXPORT int qt_ntfs_permission_lookup;
-
-void utility::ntfsEnablePermissionChecking( bool e )
-{
-	if( e ){
-
-		qt_ntfs_permission_lookup++ ;
-	}else{
-		qt_ntfs_permission_lookup-- ;
-	}
-}
-
-#else
-
-void utility::ntfsEnablePermissionChecking( bool )
-{
-}
-
-#endif
-
 bool utility::pathIsFolderAndExists( const QString& e )
 {
 	QFileInfo m( e ) ;
@@ -1629,25 +1978,26 @@ utility::printOutPut::printOutPut( const utility::cliArguments& args )
 	}
 }
 
-void utility::printOutPut::operator()( const QByteArray& e )
+void utility::printOutPut::operator()( int id,const QByteArray& e )
 {
-	if( m_status != utility::printOutPut::status::notSet ){
+	if( m_outPutFile.isOpen() ){
 
-		if( m_outPutFile.isOpen() ){
+		m_outPutFile.write( e ) ;
+	}
 
-			m_outPutFile.write( e ) ;
-		}
+	if( m_status == utility::printOutPut::status::qdebug ){
 
-		if( m_status == utility::printOutPut::status::qdebug ){
+		qDebug() << "id: " + QString::number( id ) ;
+		qDebug() << e ;
+		qDebug() << "--------------------------------" ;
 
-			qDebug() << e ;
-			qDebug() << "--------------------------------" ;
+	}else if( m_status == utility::printOutPut::status::debug ){
 
-		}else if( m_status == utility::printOutPut::status::debug ){
+		auto m = "id: " + QString::number( id ).toUtf8() ;
 
-			std::cout << e.constData() << std::endl ;
-			std::cout << "--------------------------------" << std::endl ;
-		}
+		std::cout << m.constData() << std::endl ;
+		std::cout << e.constData() << std::endl ;
+		std::cout << "--------------------------------" << std::endl ;
 	}
 }
 
@@ -1753,4 +2103,190 @@ void utility::addToListOptionsFromsDownload( QStringList& args,
 	}
 
 	mm.setDefaultProxy() ;
+}
+
+bool utility::copyFile( const QString& s,const QString& d,bool setExePermssion )
+{
+	QFile src( s ) ;
+
+	if( src.open( QIODevice::ReadOnly ) ){
+
+		QFile dst( d ) ;
+
+		if( dst.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){
+
+			std::array< char,1024 > buffer ;
+
+			while( true ){
+
+				auto m = src.read( buffer.data(),buffer.size() ) ;
+
+				if( m > 0 ){
+
+					dst.write( buffer.data(),m ) ;
+				}else{
+					if( src.size() == dst.size() ){
+
+						if( setExePermssion ){
+
+							auto s = dst.permissions() | QFileDevice::ExeOwner ;
+
+							dst.setPermissions( s ) ;
+						}
+
+						return true ;
+					}else{
+						dst.remove() ;
+
+						return false ;
+					}
+				}
+			}
+		}
+	}
+
+	return false ;
+}
+
+bool utility::addData( const QByteArray& e )
+{
+	auto s = "\r                                                      \r" ;
+
+	if( e == "\r\r" || e == s || e.contains( "[download] " ) ){
+
+		return false ;
+	}else{
+		return true ;
+	}
+}
+
+void utility::contextMenuForDirectUrl( const QJsonArray& arr,const Context& ctx )
+{	
+	QMenu m ;
+
+	auto mediaPlayer = ctx.Settings().openWith( ctx.logger() ) ;
+
+	if( arr.size() == 0 ){
+
+		m.addAction( QObject::tr( "Copy Url" ) )->setEnabled( false ) ;
+
+		if( mediaPlayer.valid() ){
+
+			for( const auto& e : mediaPlayer.opts() ){
+
+				auto s = QObject::tr( "Open Url With %1" ).arg( e.name ) ;
+
+				m.addAction( s )->setEnabled( false ) ;
+			}
+		}
+	}else{
+		auto clipBoard = QApplication::clipboard() ;
+
+		auto act = &QAction::triggered ;
+
+		if( clipBoard ){
+
+			if( arr.size() == 1 ){
+
+				auto url = arr[ 0 ].toString() ;
+
+				auto ee = m.addAction( QObject::tr( "Copy Url" ) ) ;
+
+				QObject::connect( ee,act,[ clipBoard,url ](){
+
+					clipBoard->setText( url ) ;
+				} ) ;
+			}else{
+				for( int i = 0 ; i < arr.size() ; i++ ){
+
+					auto e = QString::number( i + 1 ) ;
+
+					auto s = QObject::tr( "Copy Url %1" ).arg( e ) ;
+
+					auto url = arr[ i ].toString() ;
+
+					auto ee = m.addAction( s ) ;
+
+					QObject::connect( ee,act,[ clipBoard,url ](){
+
+						clipBoard->setText( url ) ;
+					} ) ;
+				}
+			}
+		}
+
+		if( mediaPlayer.valid() ){
+
+			if( arr.size() == 1 ){
+
+				for( const auto& e : mediaPlayer.opts() ){
+
+					auto s = QObject::tr( "Open Url With %1" ).arg( e.name ) ;
+
+					auto ee = m.addAction( s ) ;
+
+					auto ac = mediaPlayer.ac( arr[ 0 ].toString(),e ) ;
+
+					QObject::connect( ee,act,std::move( ac ) ) ;
+				}
+
+			}else{
+				for( int i = 0 ; i < arr.size() ; i++ ){
+
+					auto e = QString::number( i + 1 ) ;
+
+					for( const auto& a : mediaPlayer.opts() ){
+
+						auto s = QObject::tr( "Open Url %1 With %2" ).arg( e,a.name ) ;
+
+						auto ee = m.addAction( s ) ;
+
+						auto ac = mediaPlayer.ac( arr[ i ].toString(),a ) ;
+
+						QObject::connect( ee,act,std::move( ac ) ) ;
+					}
+				}
+			}
+		}
+	}
+
+	m.exec( QCursor::pos() ) ;
+}
+
+void utility::deleteTmpFiles( const QString& df,std::vector< QByteArray > files )
+{
+	utils::qthread::run( [ df,files = std::move( files ) ](){
+
+		for( const auto& it : files ){
+
+			auto m = df + "/" + it ;
+
+			QFile::remove( m + ".part" ) ;
+			QFile::remove( m ) ;
+		}
+	} ) ;
+}
+
+bool utility::Qt6Version()
+{
+#if QT_VERSION > QT_VERSION_CHECK( 6,0,0 )
+	return true ;
+#else
+	return false ;
+#endif
+}
+
+QString utility::OSXApplicationDirPath()
+{
+	return QCoreApplication::applicationDirPath() ;
+}
+
+QString utility::OSXtranslationFilesPath()
+{
+	return utility::OSXApplicationDirPath() + "/../Resources/translations" ;
+}
+
+QString utility::OSX3rdPartyDirPath()
+{
+	return utility::OSXApplicationDirPath() + "/extra" ;
 }

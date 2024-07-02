@@ -186,7 +186,7 @@ const char * gallery_dl::testData()
 }
 
 gallery_dl::gallery_dl( const engines& engines,const engines::engine& engine,QJsonObject& object ) :
-	engines::engine::functions( engines.Settings(),engine,engines.processEnvironment() )
+	engines::engine::baseEngine( engines.Settings(),engine,engines.processEnvironment() )
 {
 	if( !object.contains( "CookieArgument" ) ){
 
@@ -227,12 +227,19 @@ gallery_dl::~gallery_dl()
 {
 }
 
-engines::engine::functions::DataFilter gallery_dl::Filter( int id )
+engines::engine::baseEngine::DataFilter gallery_dl::Filter( int id )
 {
-	auto& s = engines::engine::functions::Settings() ;
-	const auto& engine = engines::engine::functions::engine() ;
+	auto& s = engines::engine::baseEngine::Settings() ;
+	const auto& engine = engines::engine::baseEngine::engine() ;
 
 	return { util::types::type_identity< gallery_dl::gallery_dlFilter >(),s,engine,id } ;
+}
+
+void gallery_dl::runCommandOnDownloadedFile( const QStringList& e )
+{
+	auto& s = engines::engine::baseEngine::Settings() ;
+	auto df = s.downloadFolder() + "/" + this->engine().name() + "/" ;
+	s.runCommandOnSuccessfulDownload( this->engine().name(),df,e ) ;
 }
 
 void gallery_dl::setProxySetting( QStringList& e,const QString& s )
@@ -241,36 +248,9 @@ void gallery_dl::setProxySetting( QStringList& e,const QString& s )
 	e.append( s ) ;
 }
 
-void gallery_dl::runCommandOnDownloadedFile( const QString& e,const QString& )
+void gallery_dl::updateDownLoadCmdOptions( const engines::engine::baseEngine::updateOpts& opts,bool s )
 {
-	auto& settings = engines::engine::functions::Settings() ;
-
-	auto a = settings.commandOnSuccessfulDownload() ;
-
-	if( !a.isEmpty() && !e.isEmpty() ){
-
-		auto args = util::split( a,' ',true ) ;
-		auto exe = args.takeAt( 0 ) ;
-		args.append( "bla bla bla" ) ;
-		auto pos = args.size() - 1 ;
-
-		for( const auto& it : util::split( e,'\n',true ) ){
-
-			auto b = settings.downloadFolder() + "/gallery-dl/" + it ;
-
-			if( QFile::exists( b ) ){
-
-				args.replace( pos,b ) ;
-
-				QProcess::startDetached( exe,args ) ;
-			}
-		}
-	}
-}
-
-void gallery_dl::updateDownLoadCmdOptions( const engines::engine::functions::updateOpts& opts )
-{
-	auto _not_contains = []( const engines::engine::functions::updateOpts& opts,const char * e ){
+	auto _not_contains = []( const engines::engine::baseEngine::updateOpts& opts,const char * e ){
 
 		for( const auto& it : opts.ourOptions ){
 
@@ -285,7 +265,7 @@ void gallery_dl::updateDownLoadCmdOptions( const engines::engine::functions::upd
 
 	if( _not_contains( opts,"-D" ) && _not_contains( opts,"-d" ) ){
 
-		const auto& s = engines::engine::functions::Settings().downloadFolder() ;
+		const auto& s = engines::engine::baseEngine::Settings().downloadFolder() ;
 
 		opts.ourOptions.prepend( s + "/gallery-dl" ) ;
 		opts.ourOptions.prepend( "-d" ) ;
@@ -294,45 +274,45 @@ void gallery_dl::updateDownLoadCmdOptions( const engines::engine::functions::upd
 	opts.ourOptions.prepend( "output.mode=terminal" ) ;
 	opts.ourOptions.prepend( "-o" ) ;
 
-	engines::engine::functions::updateDownLoadCmdOptions( opts ) ;
+	engines::engine::baseEngine::updateDownLoadCmdOptions( opts,s ) ;
 }
 
 QString gallery_dl::updateTextOnCompleteDownlod( const QString& uiText,
 						 const QString& bkText,
 						 const QString& dopts,
-						 const engines::engine::functions::finishedState& f )
+						 const engines::engine::baseEngine::finishedState& f )
 {
 	if( f.success() ){
 
-		return engines::engine::functions::updateTextOnCompleteDownlod( uiText,dopts,f ) ;
+		return engines::engine::baseEngine::updateTextOnCompleteDownlod( uiText,dopts,f ) ;
 
 	}else if( f.cancelled() ){
 
-		return engines::engine::functions::updateTextOnCompleteDownlod( bkText,dopts,f ) ;
+		return engines::engine::baseEngine::updateTextOnCompleteDownlod( bkText,dopts,f ) ;
 
 	}else if( uiText.contains( "Name or service not known" ) ){
 
-		auto m = engines::engine::functions::errors::unknownUrl ;
-		return engines::engine::functions::errorString( f,m,bkText ) ;
+		auto m = engines::engine::baseEngine::errors::unknownUrl ;
+		return engines::engine::baseEngine::errorString( f,m,bkText ) ;
 
 	}else if( uiText.contains( "Temporary failure in name resolution" ) ){
 
-		auto m = engines::engine::functions::errors::noNetwork ;
-		return engines::engine::functions::errorString( f,m,bkText ) ;
+		auto m = engines::engine::baseEngine::errors::noNetwork ;
+		return engines::engine::baseEngine::errorString( f,m,bkText ) ;
 	}else{
-		auto m = engines::engine::functions::processCompleteStateText( f ) ;
+		auto m = engines::engine::baseEngine::processCompleteStateText( f ) ;
 		return m + "\n" + bkText ;
 	}
 }
 
 gallery_dl::gallery_dlFilter::gallery_dlFilter( settings&,const engines::engine& engine,int id ) :
-	engines::engine::functions::filter( engine,id ),
+	engines::engine::baseEngine::filter( engine,id ),
 	m_speed( QObject::tr( "Speed:" ) ),
 	m_downloaded( QObject::tr( "Downloaded" ) )
 {
 }
 
-const QByteArray& gallery_dl::gallery_dlFilter::operator()( const Logger::Data& s )
+const QByteArray& gallery_dl::gallery_dlFilter::operator()( Logger::Data& s )
 {
 	if( s.doneDownloading() ){
 
@@ -355,8 +335,6 @@ const QByteArray& gallery_dl::gallery_dlFilter::operator()( const Logger::Data& 
 	}
 
 	const auto data = s.toStringList() ;
-
-	QStringList m ;
 
 	if( m_dir.isEmpty() ){
 
@@ -384,6 +362,8 @@ const QByteArray& gallery_dl::gallery_dlFilter::operator()( const Logger::Data& 
 		}
 	}
 
+	QStringList m ;
+
 	for( const auto& e : data ){
 
 		auto u = QDir::fromNativeSeparators( e ) ;
@@ -392,22 +372,26 @@ const QByteArray& gallery_dl::gallery_dlFilter::operator()( const Logger::Data& 
 
 		if( n != -1 ){
 
-			auto s = u.mid( n + m_dir.size() + 1 ) ;
+			auto ss = u.mid( n + m_dir.size() + 1 ) ;
 
-			if( !m.contains( s ) && !u.startsWith( "[media-downloader] cmd:" ) ){
+			if( !m.contains( ss ) && !u.startsWith( "[media-downloader] cmd:" ) ){
 
-				m.append( s ) ;
+				m.append( ss ) ;
+
+				s.addFileName( ss ) ;
 			}
 		}else{
 			n = u.indexOf( "./gallery-dl" ) ;
 
 			if( n != -1 ){
 
-				auto s = u.mid( n + 13 ) ;
+				auto ss = u.mid( n + 13 ) ;
 
-				if( !m.contains( s ) && !u.startsWith( "[media-downloader] cmd:" ) ){
+				if( !m.contains( ss ) && !u.startsWith( "[media-downloader] cmd:" ) ){
 
-					m.append( s ) ;
+					m.append( ss ) ;
+
+					s.addFileName( ss ) ;
 				}
 			}
 		}

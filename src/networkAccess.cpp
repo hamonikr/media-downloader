@@ -52,14 +52,32 @@ networkAccess::networkAccess( const Context& ctx ) :
 	m_tabManager( m_ctx.TabManager() ),
 	m_appName( m_ctx.appName() )
 {
-	if( utility::platformIsWindows() && m_ctx.Settings().showVersionInfoWhenStarting() ){
+	auto& settings = m_ctx.Settings() ;
+
+	auto m = settings.showLocalAndLatestVersionInformation() ;
+	auto e = settings.showVersionInfoAndAutoDownloadUpdates() ;
+	auto s = settings.showLocalVersionInformationOnly() ;
+
+	if( utility::platformIsWindows() && ( m || e || s ) ){
 
 		auto& e = m_ctx.logger() ;
 		auto s = QSslSocket::sslLibraryVersionString() ;
 
 		auto id = utility::sequentialID() ;
 
-		e.add( QObject::tr( "Checking installed version of" ) + " OpenSSL",id ) ;
+		auto mm = QObject::tr( "Checking installed version of %1" ) ;
+
+		if( utility::Qt6Version() ){
+
+			e.add( mm.arg( QObject::tr( "Windows' Secure Channel" ) ),id ) ;
+
+			if( !s.isEmpty() ){
+
+				s = util::split( s," " ).last() ;
+			}
+		}else{
+			e.add( mm.arg( "OpenSSL" ),id ) ;
+		}
 
 		if( s.isEmpty() ){
 
@@ -72,50 +90,92 @@ networkAccess::networkAccess( const Context& ctx ) :
 	}
 }
 
-void networkAccess::uMediaDownloader( networkAccess::Status status,const QByteArray& data ) const
+static bool _gitUrl( const QString& url )
 {
-	util::Json json( data ) ;
+	return url.contains( "mhogomchungu/media-downloader-git" ) ;
+}
 
-	if( json ){
+static bool _foundMediaDownloader( const QString& url )
+{
+	if( utility::Qt6Version() ){
 
-		auto object = json.doc().object() ;
+		if( _gitUrl( url ) ){
 
-		auto value = object.value( "assets" ) ;
-
-		const auto array = value.toArray() ;
-
-		for( const auto& it : array ){
-
-			const auto object = it.toObject() ;
-
-			const auto name = object.value( "name" ).toString() ;
-
-			auto url = object.value( "browser_download_url" ).toString() ;
-
-			if( url.endsWith( ".zip" ) ){
-
-				auto size = object.value( "size" ).toDouble() ;
-
-				updateMDOptions md ;
-
-				md.size = size ;
-				md.url  = url ;
-				md.id   = status.id() ;
-				md.name = name ;
-				md.status = status.move() ;
-
-				return this->updateMediaDownloader( md.move() ) ;
-			}
+			return url.contains( "MediaDownloaderQt6.git" ) ;
+		}else{
+			return url.contains( "MediaDownloaderQt6" ) ;
 		}
+	}else{
+		if( url.contains( "MediaDownloader" ) ){
 
-		status.done() ;
+			if( url.contains( "MediaDownloaderQt6" ) ){
 
-		auto m = QObject::tr( "Failed to parse json file from github" ) ;
+				return false ;
 
-		this->post( m_appName,m + ": " + json.errorString(),status.id() ) ;
+			}else if( _gitUrl( url ) ){
 
-		m_tabManager.enableAll() ;
+				return url.contains( "MediaDownloader.git" ) ;
+			}else{
+				return true ;
+			}
+		}else{
+			return false ;
+		}
 	}
+}
+
+void networkAccess::updateMediaDownloader( networkAccess::Status status,const QJsonDocument& json ) const
+{
+	auto object = json.object() ;
+
+	auto value = object.value( "assets" ) ;
+
+	const auto array = value.toArray() ;
+
+	for( const auto& it : array ){
+
+		const auto object = it.toObject() ;
+
+		const auto name = object.value( "name" ).toString() ;
+
+		auto url = object.value( "browser_download_url" ).toString() ;
+
+		if( _foundMediaDownloader( url ) && url.endsWith( ".zip" ) ){
+
+			auto size = object.value( "size" ).toDouble() ;
+
+			updateMDOptions md ;
+
+			md.size = size ;
+			md.url  = url ;
+			md.id   = status.id() ;
+			md.name = name ;
+			md.status = status.move() ;
+
+			return this->updateMediaDownloader( md.move() ) ;
+		}
+	}
+
+	status.done() ;
+
+	auto m = QObject::tr( "Failed to parse json file from github" ) ;
+
+	this->post( m_appName,m,status.id() ) ;
+
+	m_tabManager.enableAll() ;
+}
+
+void networkAccess::updateMediaDownloader( networkAccess::Status status ) const
+{
+	this->postStartDownloading( m_appName,status.id() ) ;
+
+	m_tabManager.disableAll() ;
+
+	m_basicdownloader.setAsActive().enableQuit() ;
+
+	auto u = this->networkRequest( m_ctx.Settings().gitHubDownloadUrl() ) ;
+
+	this->get( u,status.move(),this,&networkAccess::uMediaDownloaderN ) ;
 }
 
 void networkAccess::uMediaDownloaderN( networkAccess::Status& status,
@@ -125,7 +185,24 @@ void networkAccess::uMediaDownloaderN( networkAccess::Status& status,
 
 		if( p.success() ){
 
-			this->uMediaDownloader( status.move(),p.data() ) ;
+			QJsonParseError err ;
+
+			auto e = QJsonDocument::fromJson( p.data(),&err ) ;
+
+			if( err.error == QJsonParseError::NoError ){
+
+				this->updateMediaDownloader( status.move(),e ) ;
+			}else{
+				status.done() ;
+
+				auto mm = QObject::tr( "Download Failed" ) ;
+
+				mm += ": " + err.errorString() ;
+
+				this->post( m_appName,mm,status.id() ) ;
+
+				m_tabManager.enableAll() ;
+			}
 		}else{
 			status.done() ;
 
@@ -136,21 +213,6 @@ void networkAccess::uMediaDownloaderN( networkAccess::Status& status,
 	}else{
 		this->post( m_appName,"...",status.id() ) ;
 	}
-}
-
-void networkAccess::updateMediaDownloader( networkAccess::Status status ) const
-{
-	this->postStartDownloading( m_appName,status.id() ) ;
-
-	auto url = "https://api.github.com/repos/mhogomchungu/media-downloader/releases/latest" ;
-
-	m_tabManager.disableAll() ;
-
-	m_basicdownloader.setAsActive().enableQuit() ;
-
-	auto u = this->networkRequest( url ) ;
-
-	this->get( u,status.move(),this,&networkAccess::uMediaDownloaderN ) ;
 }
 
 void networkAccess::uMediaDownloaderM( networkAccess::updateMDOptions& md,
@@ -219,7 +281,9 @@ void networkAccess::emDownloader( networkAccess::updateMDOptions md,
 
 		QDir dir ;
 
-		auto extractedPath = md.tmpPath + "/" + md.name.mid( 0,md.name.size() - 4 ) ;
+		auto mm = md.name ;
+
+		auto extractedPath = md.tmpPath + "/" + mm.mid( 0,mm.size() - 4 ) ;
 
 		dir.rename( extractedPath,md.finalPath ) ;
 
@@ -227,7 +291,13 @@ void networkAccess::emDownloader( networkAccess::updateMDOptions md,
 
 		f.setPermissions( f.permissions() | QFileDevice::ExeOwner ) ;
 
-		this->removeNotNeededFiles( md.move() ) ;
+		QDir().rmdir( md.finalPath + "/local" ) ;
+
+		md.status.done() ;
+
+		auto m = QObject::tr( "Update Complete, Restart To Use New Version" ) ;
+
+		this->post( m_appName,m,md.id ) ;
 	}else{
 		md.status.done() ;
 
@@ -292,12 +362,14 @@ void networkAccess::download( const QByteArray& data,
 			      const engines::engine& engine,
 			      networkAccess::Opts opts ) const
 {
-	networkAccess::metadata metadata ;
-
 	util::Json json( data ) ;
 
-	if( !json ){
+	if( json ){
 
+		opts.add( engine.parseJsonDataFromGitHub( json.doc() ) ) ;
+
+		this->download( opts.move() ) ;
+	}else{
 		auto m = QObject::tr( "Failed to parse json file from github" ) ;
 
 		this->post( engine.name(),m + ": " + json.errorString(),opts.id ) ;
@@ -308,49 +380,18 @@ void networkAccess::download( const QByteArray& data,
 
 		if( opts.iter.hasNext() ){
 
-			m_ctx.getVersionInfo().check( opts.iter.next(),opts.showVinfo,false ) ;
-		}
-
-		return ;
-	}
-
-	auto object = json.doc().object() ;
-
-	auto value = object.value( "assets" ) ;
-
-	const auto array = value.toArray() ;
-
-	for( const auto& it : array ){
-
-		const auto object = it.toObject() ;
-
-		const auto value = object.value( "name" ) ;
-
-		auto entry = value.toString() ;
-
-		if( engine.foundNetworkUrl( entry ) ){
-
-			metadata.url = object.value( "browser_download_url" ).toString() ;
-
-			metadata.size = object.value( "size" ).toInt() ;
-
-			metadata.fileName = entry ;
-
-			break ;
+			m_ctx.getVersionInfo().check( opts.iter.next(),false ) ;
 		}
 	}
-
-	opts.add( std::move( metadata ) ) ;
-
-	this->download( std::move( opts ) ) ;
 }
 
-void networkAccess::download( networkAccess::iterator iter,
-			      networkAccess::showVersionInfo showVinfo ) const
+void networkAccess::download( networkAccess::iterator iter ) const
 {
 	const auto& engine = iter.engine() ;
 
-	auto exeFolderPath = QDir::fromNativeSeparators( m_ctx.Engines().engineDirPaths().binPath() ) ;
+	auto ee = m_ctx.Engines().engineDirPaths().binPath() ;
+
+	auto exeFolderPath = QDir::fromNativeSeparators( ee ) ;
 
 	auto m = QDir::fromNativeSeparators( engine.exePath().realExe() ) ;
 
@@ -392,7 +433,7 @@ void networkAccess::download( networkAccess::iterator iter,
 
 	m_basicdownloader.setAsActive().enableQuit() ;
 
-	networkAccess::Opts opts1{ std::move( iter ),exePath,exeFolderPath,id,showVinfo } ;
+	networkAccess::Opts opts1{ iter.move(),exePath,exeFolderPath,id } ;
 
 	networkAccess::Opts2 opts2{ engine,opts1.move() } ;
 
@@ -411,7 +452,7 @@ void networkAccess::downloadP2( networkAccess::Opts2& opts2,
 
 		if( p.success() ){
 
-			this->download( p.data(),engine,std::move( opts ) ) ;
+			this->download( p.data(),engine,opts.move() ) ;
 		}else{
 			this->post( engine.name(),this->reportError( p ),opts.id ) ;
 
@@ -422,7 +463,7 @@ void networkAccess::downloadP2( networkAccess::Opts2& opts2,
 			if( opts.iter.hasNext() ){
 
 				const auto& g = m_ctx.getVersionInfo() ;
-				g.check( opts.iter.next(),opts.showVinfo,false ) ;
+				g.check( opts.iter.next(),false ) ;
 			}else{
 				opts.iter.reportDone() ;
 			}
@@ -430,48 +471,6 @@ void networkAccess::downloadP2( networkAccess::Opts2& opts2,
 	}else{
 		this->post( engine.name(),"...",opts.id ) ;
 	}
-}
-
-void networkAccess::removeNotNeededFiles( networkAccess::updateMDOptions md ) const
-{
-	auto folderPath = md.finalPath ;
-
-	utils::qthread::run( [folderPath ](){
-
-		auto entries = directoryManager::readAll( folderPath ) ;
-
-		auto fileIter = entries.fileIter() ;
-
-		while( fileIter.hasNext() ){
-
-			const auto& m = fileIter.valueWithNext() ;
-
-			if( m != "media-downloader.exe" ){
-
-				QFile::remove( folderPath + "/" + m ) ;
-			}
-		}
-
-		auto folderIter = entries.directoryIter() ;
-
-		while( folderIter.hasNext() ){
-
-			const auto& m = folderIter.valueWithNext() ;
-
-			if( m != "translations" ){
-
-				directoryManager::removeDirectory( folderPath + "/" + m ) ;
-			}
-		}
-
-	},[ md = md.move(),this ](){
-
-		md.status.done() ;
-
-		auto m = QObject::tr( "Update Complete, Restart To Use New Version" ) ;
-
-		this->post( m_appName,m,md.id ) ;
-	} ) ;
 }
 
 void networkAccess::download( networkAccess::Opts opts ) const
@@ -574,7 +573,7 @@ void networkAccess::finished( networkAccess::Opts str ) const
 
 		if( str.iter.hasNext() ){
 
-			m_ctx.getVersionInfo().check( str.iter.next(),str.showVinfo,false ) ;
+			m_ctx.getVersionInfo().check( str.iter.next(),false ) ;
 		}else{
 			str.iter.reportDone() ;
 		}
@@ -583,13 +582,20 @@ void networkAccess::finished( networkAccess::Opts str ) const
 
 		if( str.isArchive ){
 
-			this->extractArchive( engine,std::move( str ) ) ;
+			this->extractArchive( engine,str.move() ) ;
 		}else{
 			auto mm = QObject::tr( "Renaming file to: " ) ;
 
 			this->post( engine.name(),mm + str.exeBinPath,str.id ) ;
 
-			QFile::remove( str.exeBinPath ) ;
+			QFileInfo ff( str.exeBinPath ) ;
+
+			if( ff.isDir() ){
+
+				QDir( str.exeBinPath ).removeRecursively() ;
+			}else{
+				QFile::remove( str.exeBinPath ) ;
+			}
 
 			str.file.rename( str.exeBinPath ) ;
 
@@ -597,10 +603,7 @@ void networkAccess::finished( networkAccess::Opts str ) const
 
 			engine.updateCmdPath( m_ctx.logger(),str.exeBinPath ) ;
 
-			auto m = str.showVinfo ;
-			m.setAfterDownloading = true ;
-
-			m_ctx.getVersionInfo().check( std::move( str.iter ),m,true ) ;
+			m_ctx.getVersionInfo().check( str.iter.move(),true ) ;
 		}
 	}
 }
@@ -629,7 +632,7 @@ void networkAccess::extractArchiveOuput( networkAccess::Opts opts,
 			f.setPermissions( f.permissions() | QFileDevice::ExeOwner ) ;
 		}
 
-		m_ctx.getVersionInfo().check( opts.iter.move(),opts.showVinfo,true ) ;
+		m_ctx.getVersionInfo().check( opts.iter.move(),true ) ;
 	}else{
 		auto m = QObject::tr( "Failed To Extract" ) ;
 
@@ -637,7 +640,7 @@ void networkAccess::extractArchiveOuput( networkAccess::Opts opts,
 
 		if( opts.iter.hasNext() ){
 
-			m_ctx.getVersionInfo().check( opts.iter.next(),opts.showVinfo,true ) ;
+			m_ctx.getVersionInfo().check( opts.iter.next(),true ) ;
 		}else{
 			opts.iter.reportDone() ;
 		}
@@ -680,9 +683,14 @@ void networkAccess::extractArchive( const engines::engine& engine,
 
 	if( engine.archiveContainsFolder() ){
 
-		auto m = str.tempPath + "/" + engine.name() ;
+		auto m = engine.deleteEngineBinFolder( str.tempPath ) ;
 
-		QDir( m ).removeRecursively() ;
+		if( !m.isEmpty() ){
+
+			m = QObject::tr( "Trouble Ahead, Failed To Delete Folder: %1" ).arg( m ) ;
+
+			this->post( engine.name(),m,str.id ) ;
+		}
 	}else{
 		QFile::remove( str.exeBinPath ) ;
 	}
@@ -709,7 +717,7 @@ void networkAccess::extractArchive( const engines::engine& engine,
 
 		if( str.iter.hasNext() ){
 
-			m_ctx.getVersionInfo().check( str.iter.next(),str.showVinfo,true ) ;
+			m_ctx.getVersionInfo().check( str.iter.next(),true ) ;
 		}else{
 			str.iter.reportDone() ;
 		}

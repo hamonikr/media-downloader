@@ -19,8 +19,7 @@
 
 #include <QProcess>
 #include <QByteArray>
-
-#include <type_traits>
+#include <QString>
 
 #pragma once
 
@@ -28,154 +27,6 @@ namespace utils
 {
 	namespace qprocess
 	{
-		namespace details
-		{
-			#if __cplusplus >= 201703L
-				template<typename Function,typename ... Args>
-				using result_of = std::invoke_result_t<Function,Args ...> ;
-			#else
-				template<typename Function,typename ... Args>
-				using result_of = std::result_of_t<Function(Args ...)> ;
-			#endif
-			template<typename Function,typename ... Args>
-			using has_non_void_return_type = std::enable_if_t<!std::is_void<result_of<Function,Args...>>::value,int> ;
-
-			template<typename ReturnType,typename Function,typename ... Args>
-			using has_same_return_type = std::enable_if_t<std::is_same<result_of<Function,Args...>,ReturnType>::value,int> ;
-
-			template<typename Function,typename ... Args>
-			using has_void_return_type = has_same_return_type<void,Function,Args...> ;
-		}
-
-		template< typename WhenCreated,
-			  typename WithError,
-			  typename WhenStarted,
-			  typename WhenDone,
-			  typename WithData,
-			  details::has_non_void_return_type< WhenCreated,QProcess& > = 0 >
-		void run( const QString& cmd,
-			  const QStringList& args,
-			  WhenCreated whenCreated,
-			  WithError withError,
-			  WhenStarted whenStarted,
-			  WhenDone whenDone,
-			  WithData withData )
-		{
-			class process : public QObject
-			{
-			public:
-				process( const QString& cmd,
-					 const QStringList& args,
-					 WhenCreated&& whenCreated,
-					 WithError&& withError,
-					 WhenStarted&& whenStarted,
-					 WhenDone&& whenDone,
-					 WithData&& withData ) :
-					m_withData( std::move( withData ) ),
-					m_whenDone( std::move( whenDone ) ),
-					m_whenStarted( std::move( whenStarted ) ),
-					m_withError( std::move( withError ) ),
-					m_data( whenCreated( m_exe ) )
-				{
-					using cc = void( QProcess::* )( int,QProcess::ExitStatus ) ;
-
-					auto a = &QProcess::errorOccurred ;
-					auto b = &QProcess::started ;
-					auto c = &QProcess::readyReadStandardOutput ;
-					auto d = &QProcess::readyReadStandardError ;
-					auto e = static_cast< cc >( &QProcess::finished ) ;
-
-					auto conn = Qt::QueuedConnection ;
-
-					QObject::connect( &m_exe,a,this,&process::withError,conn ) ;
-					QObject::connect( &m_exe,b,this,&process::whenStarted,conn ) ;
-					QObject::connect( &m_exe,c,this,&process::withStdOut,conn ) ;
-					QObject::connect( &m_exe,d,this,&process::withStdError,conn ) ;
-					QObject::connect( &m_exe,e,this,&process::whenDone,conn ) ;
-
-					m_exe.start( cmd,args ) ;
-				}
-			private:
-				void withError( QProcess::ProcessError err )
-				{
-					m_withError( err,m_data ) ;
-				}
-				void whenStarted()
-				{
-					m_whenStarted( m_exe,m_data ) ;
-				}
-				void withStdOut()
-				{
-					auto a = QProcess::ProcessChannel::StandardOutput ;
-
-					m_withData( a,m_exe.readAllStandardOutput(),m_data ) ;
-				}
-				void withStdError()
-				{
-					auto a = QProcess::ProcessChannel::StandardError ;
-
-					m_withData( a,m_exe.readAllStandardError(),m_data ) ;
-				}
-				void whenDone( int e,QProcess::ExitStatus ss )
-				{
-					m_whenDone( e,ss,m_data ) ;
-
-					this->deleteLater() ;
-				}
-				QProcess m_exe ;
-				WithData m_withData ;
-				WhenDone m_whenDone ;
-				WhenStarted m_whenStarted ;
-				WithError m_withError ;
-				details::result_of< WhenCreated,QProcess& > m_data ;
-			};
-
-			new process( cmd,
-				     args,
-				     std::move( whenCreated ),
-				     std::move( withError ),
-				     std::move( whenStarted ),
-				     std::move( whenDone ),
-				     std::move( withData ) ) ;
-		}
-
-		template< typename WhenCreated,
-			  typename WithError,
-			  typename WhenStarted,
-			  typename WhenDone,
-			  typename WithData,
-			  details::has_void_return_type< WhenCreated,QProcess& > = 0 >
-		void run( const QString& cmd,
-			  const QStringList& args,
-			  WhenCreated whenCreated,
-			  WithError&& withError,
-			  WhenStarted whenStarted,
-			  WhenDone whenDone,
-			  WithData withData )
-		{
-			run( cmd,args,[ whenCreated = std::move( whenCreated ) ]( QProcess& exe )mutable{
-
-				   whenCreated( exe ) ;
-				   return 0 ;
-
-			},[ withError = std::move( withError ) ]( QProcess::ProcessError e )mutable{
-
-				withError( e ) ;
-
-			},[ whenStarted = std::move( whenStarted ) ]( QProcess& exe,int )mutable{
-
-				whenStarted( exe ) ;
-
-			},[ whenDone = std::move( whenDone ) ]( int e,QProcess::ExitStatus ss,int )mutable{
-
-				whenDone( e,ss ) ;
-
-			},[ withData = std::move( withData ) ]( QProcess::ProcessChannel channel,QByteArray&& data,int )mutable{
-
-				withData( channel,std::move( data ) ) ;
-			} ) ;
-		}
-
 		struct outPut
 		{
 			bool success() const
@@ -194,7 +45,84 @@ namespace utils
 			enum class ExitStatus{ FailedToStart,NormalExit,Crashed } exitStatus ;
 			QByteArray stdOut ;
 			QByteArray stdError ;
-		};
+		} ;
+
+		template< typename Events >
+		void run( const QString& cmd,const QStringList& args,Events events )
+		{
+			class process : public QObject
+			{
+			public:
+				process( const QString& cmd,const QStringList& args,Events&& events ) :
+					m_events( std::move( events ) )
+				{
+					m_events.whenCreated( m_exe ) ;
+
+					using cc = void( QProcess::* )( int,QProcess::ExitStatus ) ;					
+
+					auto a = this->errorSignal() ;
+					auto b = &QProcess::started ;
+					auto c = &QProcess::readyReadStandardOutput ;
+					auto d = &QProcess::readyReadStandardError ;
+					auto e = static_cast< cc >( &QProcess::finished ) ;
+
+					auto conn = Qt::QueuedConnection ;
+
+					QObject::connect( &m_exe,a,this,&process::withError,conn ) ;
+					QObject::connect( &m_exe,b,this,&process::whenStarted,conn ) ;
+					QObject::connect( &m_exe,c,this,&process::withStdOut,conn ) ;
+					QObject::connect( &m_exe,d,this,&process::withStdError,conn ) ;
+					QObject::connect( &m_exe,e,this,&process::whenDone,conn ) ;
+
+					m_exe.start( cmd,args ) ;
+				}
+			private:
+				auto errorSignal()
+				{
+				#if QT_VERSION >= QT_VERSION_CHECK( 5,6,0 )
+					return &QProcess::errorOccurred ;
+				#else
+					using aa = void( QProcess::* )( QProcess::ProcessError ) ;
+					return static_cast< aa >( &QProcess::error ) ;
+				#endif
+				}
+				void withError( QProcess::ProcessError err )
+				{
+					m_events.withError( err ) ;
+
+					if( err == QProcess::ProcessError::FailedToStart ){
+
+						this->deleteLater() ;
+					}
+				}
+				void whenStarted()
+				{
+					m_events.whenStarted( m_exe ) ;
+				}
+				void withStdOut()
+				{
+					auto a = QProcess::ProcessChannel::StandardOutput ;
+
+					m_events.withData( a,m_exe.readAllStandardOutput() ) ;
+				}
+				void withStdError()
+				{
+					auto a = QProcess::ProcessChannel::StandardError ;
+
+					m_events.withData( a,m_exe.readAllStandardError() ) ;
+				}
+				void whenDone( int e,QProcess::ExitStatus ss )
+				{
+					m_events.whenDone( e,ss ) ;
+
+					this->deleteLater() ;
+				}
+				QProcess m_exe ;
+				Events m_events ;
+			};
+
+			new process( cmd,args,std::move( events ) ) ;
+		}
 
 		template< typename WhenDone >
 		void run( const QString& cmd,
@@ -202,72 +130,73 @@ namespace utils
 			  QProcess::ProcessChannelMode m,
 			  WhenDone whenDone )
 		{
-			run( cmd,args,[ & ]( QProcess& exe )mutable{
-
-				struct context
+			class events
+			{
+			public:
+				events( WhenDone w,QProcess::ProcessChannelMode m ) :
+					m_whenDone( std::move( w ) ),m_mode( m )
 				{
-					context( QProcess::ProcessChannelMode c,WhenDone&& w ) :
-						channel( c ),whenDone( std::move( w ) )
-					{
+				}
+				void withError( QProcess::ProcessError err )
+				{
+					if( err == QProcess::ProcessError::FailedToStart ){
+
+						auto s = outPut::ExitStatus::FailedToStart ;
+
+						m_whenDone( qprocess::outPut{ -1,s,{},{} } ) ;
 					}
-					QProcess::ProcessChannelMode channel ;
-					QByteArray stdOut ;
-					QByteArray stdError ;
-					WhenDone whenDone ;
-				};
-
-				exe.setProcessChannelMode( m ) ;
-
-				return context( m,std::move( whenDone ) ) ;
-
-			},[]( QProcess::ProcessError err,auto& ctx )mutable{
-
-				if( err == QProcess::ProcessError::FailedToStart ){
-
-					ctx.whenDone( { -1,outPut::ExitStatus::FailedToStart,{},{} } ) ;
 				}
-
-			},[]( QProcess&,auto& ){
-
-			},[]( int e,QProcess::ExitStatus ss,auto& ctx )mutable{
-
-				outPut::ExitStatus mm ;
-
-				if( ss == QProcess::ExitStatus::NormalExit ){
-
-					mm = outPut::ExitStatus::NormalExit ;
-
-				}else if( ss == QProcess::ExitStatus::CrashExit ){
-
-					mm = outPut::ExitStatus::Crashed ;
-				}else{
-					mm = outPut::ExitStatus::FailedToStart ;
+				void whenStarted( QProcess& )
+				{
 				}
+				void whenCreated( QProcess& )
+				{
+				}
+				void withData( QProcess::ProcessChannel c,const QByteArray& data )
+				{
+					if( m_mode == QProcess::MergedChannels ){
 
-				ctx.whenDone( { e,mm,std::move( ctx.stdOut ),std::move( ctx.stdError ) } ) ;
-
-			},[]( QProcess::ProcessChannel c,QByteArray&& data,auto& ctx )mutable{
-
-				if( ctx.channel == QProcess::MergedChannels ){
-
-					ctx.stdOut += std::move( data ) ;
-				}else{
-					if( c == QProcess::ProcessChannel::StandardOutput ){
-
-						ctx.stdOut += std::move( data ) ;
+						m_stdOut += data ;
 					}else{
-						ctx.stdError += std::move( data ) ;
+						if( c == QProcess::ProcessChannel::StandardOutput ){
+
+							m_stdOut += data ;
+						}else{
+							m_stdErr += data ;
+						}
 					}
 				}
-			} ) ;
+				void whenDone( int e,QProcess::ExitStatus ss )
+				{
+					outPut::ExitStatus mm ;
+
+					if( ss == QProcess::ExitStatus::NormalExit ){
+
+						mm = outPut::ExitStatus::NormalExit ;
+
+					}else if( ss == QProcess::ExitStatus::CrashExit ){
+
+						mm = outPut::ExitStatus::Crashed ;
+					}else{
+						mm = outPut::ExitStatus::FailedToStart ;
+					}
+
+					m_whenDone( this->done( e,mm ) ) ;
+				}
+			private:
+				qprocess::outPut done( int e,outPut::ExitStatus mm )
+				{
+					return { e,mm,std::move( m_stdOut ),std::move( m_stdErr ) } ;
+				}
+				QByteArray m_stdOut ;
+				QByteArray m_stdErr ;
+				WhenDone m_whenDone ;
+				QProcess::ProcessChannelMode m_mode ;
+			} ;
+
+			run( cmd,args,events( std::move( whenDone ),m ) ) ;
 		}
 
-		template< typename WhenDone >
-		void run( const QString& cmd,const QStringList& args,WhenDone whenDone )
-		{
-			run( cmd,args,QProcess::SeparateChannels,std::move( whenDone ) ) ;
-		}
-		
 		template< typename FunctionArgs,
 			  typename Object,
 			  typename Method,
@@ -280,10 +209,26 @@ namespace utils
 			  Object object,
 			  Method method )
 		{
-			run( cmd,args,mode,[ fargs = std::move( fargs ),object,method ]( const utils::qprocess::outPut& s )mutable{
-				
-				( object->*method )( std::move( fargs ),s ) ;
-			} ) ;
+			class meaw
+			{
+			public:
+				meaw( FunctionArgs&& args,Object obj,Method method ) :
+					m_args( std::move( args ) ),
+					m_obj( obj ),
+					m_method( method )
+				{
+				}
+				void operator()( const qprocess::outPut& s )
+				{
+					( m_obj->*m_method )( std::move( m_args ),s ) ;
+				}
+			private:
+				FunctionArgs m_args ;
+				Object m_obj ;
+				Method m_method ;
+			} ;
+
+			run( cmd,args,mode,meaw( std::move( fargs ),object,method ) ) ;
 		}
 
 		template< typename Object,
@@ -296,10 +241,23 @@ namespace utils
 			  Object object,
 			  Method method )
 		{
-			run( cmd,args,mode,[ object,method ]( const utils::qprocess::outPut& s )mutable{
+			class meaw
+			{
+			public:
+				meaw( Object obj,Method method ) :
+					m_obj( obj ),m_method( method )
+				{
+				}
+				void operator()( const qprocess::outPut& s )
+				{
+					( m_obj->*m_method )( s ) ;
+				}
+			private:
+				Object m_obj ;
+				Method m_method ;
+			} ;
 
-				( object->*method )( s ) ;
-			} ) ;
+			run( cmd,args,mode,meaw( object,method ) ) ;
 		}
 
 		template< typename FunctionArgs,
@@ -313,12 +271,7 @@ namespace utils
 			  Object object,
 			  Method method )
 		{
-			auto mode = QProcess::SeparateChannels ;
-
-			run( cmd,args,mode,[ fargs = std::move( fargs ),object,method ]( const utils::qprocess::outPut& s )mutable{
-
-				( object->*method )( std::move( fargs ),s ) ;
-			} ) ;
+			run( cmd,args,QProcess::SeparateChannels,std::move( fargs ),object,method ) ;
 		}
 
 		template< typename Object,
@@ -330,12 +283,7 @@ namespace utils
 			  Object object,
 			  Method method )
 		{
-			auto mode = QProcess::SeparateChannels ;
-
-			run( cmd,args,mode,[ object,method ]( const utils::qprocess::outPut& s )mutable{
-
-				( object->*method )( s ) ;
-			} ) ;
+			run( cmd,args,QProcess::SeparateChannels,object,method ) ;
 		}
 	}
 }

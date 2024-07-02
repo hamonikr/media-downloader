@@ -144,12 +144,7 @@ public:
 			return false ;
 		#endif
 	}
-	struct showVersionInfo
-	{
-		bool show ;
-		bool setAfterDownloading ;
-	};
-	void download( engines::Iterator iter,networkAccess::showVersionInfo v ) const
+	void download( engines::Iterator iter ) const
 	{
 		class meaw : public networkAccess::iter
 		{
@@ -183,12 +178,13 @@ public:
 			engines::Iterator m_iter ;
 		};
 
-		this->download( { util::types::type_identity< meaw >(),std::move( iter ) },v ) ;
+		this->download( { util::types::type_identity< meaw >(),std::move( iter ) } ) ;
 	}
 
+	void updateMediaDownloader( networkAccess::Status,const QJsonDocument& ) const ;
 	void updateMediaDownloader( networkAccess::Status ) const ;
 
-	void download( networkAccess::iterator,networkAccess::showVersionInfo ) const ;
+	void download( networkAccess::iterator ) const ;
 
 	template< typename Function >
 	void get( const QString& url,Function function ) const
@@ -298,13 +294,6 @@ private:
 		} ) ;
 	}
 
-	struct metadata
-	{
-		qint64 size = 0 ;
-		QString url ;
-		QString fileName ;
-	} ;
-
 	class File
 	{
 	public:
@@ -339,16 +328,14 @@ private:
 		Opts( networkAccess::iterator itr,
 		      const QString& exePath,
 		      const QString& efp,
-		      int xd,
-		      networkAccess::showVersionInfo svf ) :
+		      int xd ) :
 			iter( std::move( itr ) ),
 			exeBinPath( exePath ),
 			tempPath( efp ),
-			showVinfo( svf ),
 			id( xd )
 		{
 		}
-		void add( networkAccess::metadata&& m )
+		void add( engines::metadata&& m )
 		{
 			metadata = std::move( m ) ;
 
@@ -367,12 +354,11 @@ private:
 		}
 		networkAccess::iterator iter ;
 		QString exeBinPath ;
-		networkAccess::metadata metadata ;
+		engines::metadata metadata ;
 		QString filePath ;
 		QString tempPath ;
 		mutable QString networkError ;
 		bool isArchive = false ;
-		networkAccess::showVersionInfo showVinfo ;
 		int id ;
 		Logger::locale locale ;
 		networkAccess::File file ;
@@ -406,15 +392,12 @@ private:
 		}		
 	} ;
 
-	void uMediaDownloader( networkAccess::Status,const QByteArray& ) const ;
-
-	void uMediaDownloaderN( networkAccess::Status&,const utils::network::progress& ) const ;
 	void uMediaDownloaderM( networkAccess::updateMDOptions&,const utils::network::progress& ) const ;
+	void uMediaDownloaderN( networkAccess::Status& status,const utils::network::progress& p ) const ;
 
 	void downloadP( networkAccess::Opts2&,const utils::network::progress& ) const ;
 	void downloadP2( networkAccess::Opts2&,const utils::network::progress& ) const ;
 
-	void removeNotNeededFiles( networkAccess::updateMDOptions ) const ;
 	void updateMediaDownloader( networkAccess::updateMDOptions ) const ;
 	void extractMediaDownloader( networkAccess::updateMDOptions ) const ;
 

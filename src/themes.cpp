@@ -20,6 +20,21 @@
 #include "themes.h"
 #include <QProcess>
 #include <QDebug>
+#include <QJsonDocument>
+
+bool isGtkDarkTheme()
+{
+    QProcess process;
+    QStringList arguments;
+    arguments << "get" << "org.gnome.desktop.interface" << "gtk-theme";
+    process.start("gsettings", arguments);
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput().trimmed();
+    
+    qDebug() << "Current GTK theme from gsettings:" << output;
+    
+    return output.contains("dark", Qt::CaseInsensitive);
+}
 
 themes::themes( const QString& themeName,const QString& themePath )  :
 	m_theme( themeName ),
@@ -117,6 +132,11 @@ QString themes::defaultthemeFullPath() const
 	return m_themePath + "/" + m_defaultDarkTheme + ".json" ;
 }
 
+QString themes::defaultPureDarkthemeFullPath() const
+{
+	return m_themePath + "/Pure Dark.json" ;
+}
+
 QString themes::themeFullPath() const
 {
 	if( m_theme == m_defaultDarkTheme ){
@@ -165,225 +185,139 @@ void themes::setTheme( QApplication& app,const QJsonObject& obj ) const
 	}
 }
 
-QJsonObject themes::defaultTheme() const
+static void _add( QJsonObject& obj,const char * key,int a,int b,int c,int d )
+{
+	obj.insert( key,[ & ](){
+
+		QJsonObject oo ;
+
+		oo.insert( "rgba",[ & ](){
+
+			QJsonArray arr ;
+
+			arr.append( a ) ;
+			arr.append( b ) ;
+			arr.append( c ) ;
+			arr.append( d ) ;
+
+			return arr ;
+		}() ) ;
+
+		return oo ;
+	}() ) ;
+}
+
+static void _add( QJsonObject& obj,const char * key,const char * subkey,const char * value )
+{
+	obj.insert( key,[ & ](){
+
+		QJsonObject oo ;
+
+		oo.insert( subkey,value ) ;
+
+		return oo ;
+	}() ) ;
+}
+
+static QJsonObject _baseTheme()
 {
 	QJsonObject obj ;
 
-	obj.insert( "darkColor",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "rgba",[](){
-
-			QJsonArray arr ;
-
-			arr.append( 45 ) ;
-			arr.append( 45 ) ;
-			arr.append( 45 ) ;
-			arr.append( 255 ) ;
-
-			return arr ;
-		}() ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "disabledColor",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "rgba",[](){
-
-			QJsonArray arr ;
-
-			arr.append( 127 ) ;
-			arr.append( 127 ) ;
-			arr.append( 127 ) ;
-			arr.append( 255 ) ;
-
-			return arr ;
-		}() ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::WindowText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::lightGray" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Window",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","darkColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Base",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "rgba",[](){
-
-			QJsonArray arr ;
-
-			arr.append( 41 ) ;
-			arr.append( 42 ) ;
-			arr.append( 43 ) ;
-			arr.append( 255 ) ;
-
-			return arr ;
-		}() ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::AlternateBase",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","darkColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::ToolTipBase",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","darkColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::ToolTipText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::lightGray" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Text",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::lightGray" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Disabled,QPalette::Text",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","disabledColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Button",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","darkColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::ButtonText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::lightGray" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Disabled,QPalette::ButtonText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","disabledColor" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::BrightText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::yellow" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Link",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "rgba",[](){
-
-			QJsonArray arr ;
-
-			arr.append( 77 ) ;
-			arr.append( 148 ) ;
-			arr.append( 209 ) ;
-			arr.append( 255 ) ;
-
-			return arr ;
-		}() ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Highlight",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "rgba",[](){
-
-			QJsonArray arr ;
-
-			arr.append( 27 ) ;
-			arr.append( 129 ) ;
-			arr.append( 231 ) ;
-			arr.append( 255 ) ;
-
-			return arr ;
-		}() ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::HighlightedText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "Qt::GlobalColor","Qt::black" ) ;
-
-		return obj ;
-	}() ) ;
-
-	obj.insert( "QPalette::Disabled,QPalette::HighlightedText",[](){
-
-		QJsonObject obj ;
-
-		obj.insert( "GlobalColor","disabledColor" ) ;
-
-		return obj ;
-	}() ) ;
+	_add( obj,"disabledColor",127,127,127,255 ) ;
+	_add( obj,"QPalette::Base",41,42,43,255 ) ;
+	_add( obj,"QPalette::Link",77,148,209,255 ) ;
+	_add( obj,"QPalette::Highlight",27,129,231,255 ) ;
+
+	_add( obj,"QPalette::WindowText","Qt::GlobalColor","Qt::lightGray" ) ;
+	_add( obj,"QPalette::Window","GlobalColor","darkColor" ) ;
+	_add( obj,"QPalette::AlternateBase","GlobalColor","darkColor" ) ;
+	_add( obj,"QPalette::ToolTipBase","GlobalColor","darkColor" ) ;
+	_add( obj,"QPalette::ToolTipText","Qt::GlobalColor","Qt::lightGray" ) ;
+	_add( obj,"QPalette::Text","Qt::GlobalColor","Qt::lightGray" ) ;
+	_add( obj,"QPalette::Disabled,QPalette::Text","GlobalColor","disabledColor" ) ;
+	_add( obj,"QPalette::Button","GlobalColor","darkColor" ) ;
+	_add( obj,"QPalette::ButtonText","Qt::GlobalColor","Qt::lightGray" ) ;
+	_add( obj,"QPalette::Disabled,QPalette::ButtonText","GlobalColor","disabledColor" ) ;
+	_add( obj,"QPalette::BrightText","Qt::GlobalColor","Qt::yellow" ) ;
+	_add( obj,"QPalette::HighlightedText","Qt::GlobalColor","Qt::black" ) ;
+	_add( obj,"QPalette::Disabled,QPalette::HighlightedText","GlobalColor","disabledColor" ) ;
 
 	obj.insert( "QToolTipStyleSheet","QToolTip { color: #ffffff; background-color: #2a82da; border: 1px solid white; }" ) ;
 
 	return obj ;
+}
+
+QJsonObject themes::defaultTheme() const
+{
+	auto obj = _baseTheme() ;
+
+	_add( obj,"darkColor",45,45,45,255 ) ;
+
+	return obj ;
+}
+
+QJsonObject themes::defaultPureDarkTheme() const
+{
+	auto obj = _baseTheme() ;
+
+	_add( obj,"darkColor",0,0,0,0 ) ;
+
+	return obj ;
+}
+
+void themes::set( QApplication& app ) const
+{
+	if( !QFile::exists( m_themePath ) ){
+
+		QDir().mkpath( m_themePath ) ;
+	}
+
+	auto defaultThemePath = this->defaultthemeFullPath() ;
+
+	if( !QFile::exists( defaultThemePath ) ){
+
+		QFile f( defaultThemePath ) ;
+
+		if( f.open( QIODevice::WriteOnly ) ){
+
+			QJsonDocument doc( this->defaultTheme() ) ;
+
+			f.write( doc.toJson( QJsonDocument::Indented ) ) ;
+		}
+	}
+
+	auto defaultPureDarkThemePath = this->defaultPureDarkthemeFullPath() ;
+
+	if( !QFile::exists( defaultPureDarkThemePath ) ){
+
+		QFile f( defaultPureDarkThemePath ) ;
+
+		if( f.open( QIODevice::WriteOnly ) ){
+
+			QJsonDocument doc( this->defaultPureDarkTheme() ) ;
+
+			f.write( doc.toJson( QJsonDocument::Indented ) ) ;
+		}
+	}
+
+	if( this->usingThemes() ){
+
+		QFile f( this->themeFullPath() ) ;
+
+		if( !f.open( QIODevice::ReadOnly ) ){
+
+			this->setDefaultTheme( app ) ;
+		}else{
+			auto obj = QJsonDocument::fromJson( f.readAll() ).object() ;
+
+			if( obj.isEmpty() ){
+
+				this->setDefaultTheme( app ) ;
+			}else{
+				this->setTheme( app,obj ) ;
+			}
+		}
+	}
 }
 
 static QColor _qtColor( const QString& aa )
@@ -571,18 +505,4 @@ int themes::indexAt( const QString& e,const QStringList& s ) const
 	}
 
 	return 0 ;
-}
-
-bool isGtkDarkTheme()
-{
-    QProcess process;
-    QStringList arguments;
-    arguments << "get" << "org.gnome.desktop.interface" << "gtk-theme";
-    process.start("gsettings", arguments);
-    process.waitForFinished();
-    QString output = process.readAllStandardOutput().trimmed();
-    
-    qDebug() << "Current GTK theme from gsettings:" << output;
-    
-    return output.contains("dark", Qt::CaseInsensitive);
 }

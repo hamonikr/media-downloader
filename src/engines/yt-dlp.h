@@ -22,43 +22,47 @@
 
 #include "../engines.h"
 
-class yt_dlp : public engines::engine::functions
+class yt_dlp : public engines::engine::baseEngine
 {
 public:
 	static const char * testYtDlp() ;
 	static const char * testFfmpeg() ;
+	static void checkIfBinaryExist( const QString&,const QString& ) ;
 
 	static QStringList jsonNoFormatsArgumentList() ;
 
 	~yt_dlp() override ;
 
-	class youtube_dlFilter : public engines::engine::functions::filter
+	class youtube_dlFilter : public engines::engine::baseEngine::filter
 	{
 	public:
-		youtube_dlFilter( int processId,const engines::engine&,bool ) ;
+		youtube_dlFilter( int processId,const engines::engine&,yt_dlp& ) ;
 
-		const QByteArray& operator()( const Logger::Data& e ) override ;
+		const QByteArray& operator()( Logger::Data& e ) override ;
 
 		~youtube_dlFilter() override ;
 	private:
+		QByteArray fileName() ;
+
 		const char * compatYear() ;
 
 		const QByteArray& parseOutput( const Logger::Data::QByteArrayList& ) ;
 
 		void setFileName( const QByteArray& ) ;
-		engines::engine::functions::preProcessing m_preProcessing ;
-		engines::engine::functions::postProcessing m_postProcessing ;
+		engines::engine::baseEngine::preProcessing m_preProcessing ;
+		engines::engine::baseEngine::postProcessing m_postProcessing ;
 
 		const engines::engine& m_engine ;
 		QByteArray m_tmp ;
-		QByteArray m_fileName ;
+		std::vector< QByteArray > m_fileNames ;
+		yt_dlp& m_parent ;
 	} ;
 
-	engines::engine::functions::FilterOutPut filterOutput() override ;
+	engines::engine::baseEngine::FilterOutPut filterOutput() override ;
 
-	std::vector< engines::engine::functions::mediaInfo > mediaProperties( Logger&,const QByteArray& ) override ;
+	std::vector< engines::engine::baseEngine::mediaInfo > mediaProperties( Logger&,const QByteArray& ) override ;
 
-	std::vector< engines::engine::functions::mediaInfo > mediaProperties( Logger&,const QJsonArray& ) override ;
+	std::vector< engines::engine::baseEngine::mediaInfo > mediaProperties( Logger&,const QJsonArray& ) override ;
 
 	bool breakShowListIfContains( const QStringList& ) override ;
 
@@ -74,16 +78,14 @@ public:
 
 	void setTextEncondig( const QString&,QStringList& ) override ;
 
-	engines::engine::functions::DataFilter Filter( int ) override ;
-
-	void runCommandOnDownloadedFile( const QString&,const QString& ) override ;
+	engines::engine::baseEngine::DataFilter Filter( int ) override ;
 
 	QString updateTextOnCompleteDownlod( const QString& uiText,
 					     const QString& bkText,
 					     const QString& downloadingOptions,
-					     const engines::engine::functions::finishedState& ) override ;
+					     const engines::engine::baseEngine::finishedState& ) override ;
 
-	void updateDownLoadCmdOptions( const engines::engine::functions::updateOpts& ) override ;
+	void updateDownLoadCmdOptions( const engines::engine::baseEngine::updateOpts&,bool ) override ;
 
 	void updateGetPlaylistCmdOptions( QStringList& ) override ;
 
@@ -99,11 +101,15 @@ public:
 		QJsonObject&,
 		Logger& logger,
 		const engines::enginePaths&,
-		const util::version& ) ;
+		const util::version&,
+		const QString&,
+		bool ) ;
 private:
 	void appendCompatOption( QStringList& ) ;
 	const engines::engine& m_engine ;
 	QJsonArray m_objs ;
 	const util::version& m_version ;
 	bool m_likeYtdlp ;
+	bool m_deleteFilesOnCancel ;
+	QString m_downloadFolder ;
 };

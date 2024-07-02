@@ -41,6 +41,27 @@ namespace Ui
 	class MainWindow ;
 }
 
+class ContextWinId
+{
+public:
+	ContextWinId( WId id ) : m_value( id )
+	{
+	}
+#ifdef Q_OS_WIN
+	HWND value() const
+	{
+		return reinterpret_cast< HWND >( m_value ) ;
+	}
+#else
+	WId value() const
+	{
+		return m_value ;
+	}
+#endif
+private:
+	WId m_value ;
+} ;
+
 class Context{
 public:
 	Context( settings& s,
@@ -95,6 +116,10 @@ public:
 	{
 		return m_mainWidget ;
 	}
+	ContextWinId nativeHandleToMainWindow() const
+	{
+		return m_mainWidget.winId() ;
+	}
 	MainWindow& mainWindow() const
 	{
 		return m_mainWindow ;
@@ -110,6 +135,10 @@ public:
 	utility::printOutPut& debug() const
 	{
 		return m_printOutput ;
+	}
+	void debug( int id,const QByteArray& e ) const
+	{
+		m_printOutput( id,e ) ;
 	}
 	const QString& appName() const
 	{

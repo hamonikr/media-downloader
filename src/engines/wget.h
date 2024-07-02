@@ -21,7 +21,7 @@
 
 #include "../engines.h"
 
-class wget : public engines::engine::functions
+class wget : public engines::engine::baseEngine
 {
 public:
 	static const char * testData() ;
@@ -31,30 +31,30 @@ public:
 			  const engines::enginePaths& enginePath ) ;
 	~wget() override ;
 	wget( const engines& e,const engines::engine& s,QJsonObject& ) ;
-	void updateDownLoadCmdOptions( const engines::engine::functions::updateOpts& ) override ;
+	void updateDownLoadCmdOptions( const engines::engine::baseEngine::updateOpts&,bool ) override ;
 
-	engines::engine::functions::DataFilter Filter( int ) override ;
+	engines::engine::baseEngine::DataFilter Filter( int ) override ;
 
 	void setProxySetting( QStringList&,const QString& ) override ;
 
 	QString updateTextOnCompleteDownlod( const QString& uiText,
 					     const QString& bkText,
 					     const QString& downloadingOptions,
-					     const engines::engine::functions::finishedState& ) override ;
+					     const engines::engine::baseEngine::finishedState& ) override ;
 
-	class wgetFilter : public engines::engine::functions::filter
+	class wgetFilter : public engines::engine::baseEngine::filter
 	{
 	public:
 		wgetFilter( const engines::engine&,int ) ;
 
-		const QByteArray& operator()( const Logger::Data& e ) override ;
+		const QByteArray& operator()( Logger::Data& e ) override ;
 
 		~wgetFilter() override ;
 	private:
 		QByteArray m_title ;
 		QByteArray m_length ;
 		QByteArray m_tmp ;
-		engines::engine::functions::preProcessing m_preProcessing ;
+		engines::engine::baseEngine::preProcessing m_preProcessing ;
 	} ;
 private:
 };

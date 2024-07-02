@@ -1,21 +1,3 @@
-TEMPLATE = app
-TARGET = media-downloader
-DESTDIR = build
-OBJECTS_DIR = $$DESTDIR/objects
-MOC_DIR = $$DESTDIR/moc
-RCC_DIR = $$DESTDIR/rcc
-UI_DIR = $$DESTDIR/ui
-
-target.path = /usr/bin
-INSTALLS += target
-
-CONFIG += release
-
-SOURCES += main.cpp
-HEADERS += main.h
-
-QT += \
-widgets
 
 SOURCES += \
 about.cpp \
@@ -53,6 +35,7 @@ themes.h \
 mainwindow.h \
 playlistdownloader.h \
 settings.h \
+tableWidget.h \
 tabmanager.h \
 utility.h \
 
@@ -73,5 +56,5 @@ TRANSLATIONS = \
 ../translations/sv_SE.ts \
 ../translations/de_DE.ts \
 ../translations/pt_BR.ts \
-../translations/nl_NL.ts
-
+../translations/nl_NL.ts \
+../translations/ar.ts

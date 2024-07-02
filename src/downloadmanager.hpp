@@ -110,10 +110,6 @@ public:
 		{
 			return m_lastIndex ;
 		}
-		bool batchDownloading() const
-		{
-			return m_batchDownloading ;
-		}
 		enum class state{ cancelled,done,running } ;
 		bool continuing() const
 		{
@@ -127,14 +123,17 @@ public:
 		{
 			return m_state == state::done ;
 		}
+		finishedStatus move()
+		{
+			return std::move( *this ) ;
+		}
 		const engines::ProcessExitState& exitState() const
 		{
 			return m_exitState ;
 		}
-		finishedStatus( int i,int l,bool m,state s,engines::ProcessExitState e ) :
+		finishedStatus( int i,int l,state s,engines::ProcessExitState e ) :
 			m_index( i ),
 			m_lastIndex( l ),
-			m_batchDownloading( m ),
 			m_state( s ),
 			m_exitState( std::move( e ) )
 		{
@@ -142,7 +141,6 @@ public:
 		finishedStatus( state s,engines::ProcessExitState e ) :
 			m_index( 0 ),
 			m_lastIndex( 0 ),
-			m_batchDownloading( false ),
 			m_state( s ),
 			m_exitState( std::move( e ) )
 		{
@@ -153,7 +151,6 @@ public:
 	private:
 		int m_index ;
 		int m_lastIndex ;
-		bool m_batchDownloading ;
 		state m_state ;
 		engines::ProcessExitState m_exitState ;
 	};
@@ -166,11 +163,20 @@ public:
 		index()
 		{
 		}
-		index( tableWidget& t,bool n,downloadManager::index::tab i ) :
-			m_batchDownloading( n ),
+		index( tableWidget& t,downloadManager::index::tab i ) :
 			m_init_position( i ),
 			m_table( &t )
 		{
+		}
+		void add( index idx )
+		{
+			m_init_position = idx.m_init_position ;
+			m_table = idx.m_table ;
+
+			for( auto& it : idx.m_entries ){
+
+				m_entries.emplace_back( std::move( it ) ) ;
+			}
 		}
 		int value( int s ) const
 		{
@@ -179,10 +185,6 @@ public:
 		const utility::downLoadOptions& options( int s ) const
 		{
 			return this->Entry( s ).options ;
-		}
-		bool batchDownloading() const
-		{
-			return m_batchDownloading ;
 		}
 		bool forceDownload( int s ) const
 		{
@@ -219,15 +221,15 @@ public:
 		}
 		void add( int index,utility::downLoadOptions opts,bool forceUpdate = false )
 		{
-			m_entries.emplace_back( index,std::move( opts ),forceUpdate ) ;
+			m_entries.emplace_back( index,opts.move(),forceUpdate ) ;
 		}
 		int lastIndex() const
 		{
 			return m_entries.rbegin()->index ;
 		}
-		index move() const
+		index move()
 		{
-			return std::move( const_cast< index& >( *this ) ) ;
+			return std::move( *this ) ;
 		}
 		bool empty() const
 		{
@@ -251,7 +253,7 @@ public:
 		{
 			entry( int i,utility::downLoadOptions o,bool s ) :
 				index( i ),
-				options( std::move( o ) ),
+				options( o.move() ),
 				forceDownload( s )
 			{
 			}
@@ -263,18 +265,15 @@ public:
 		{
 			return m_entries[ static_cast< size_t >( s ) ] ;
 		}
-		bool m_batchDownloading ;
 		int m_index = 0 ;
 		downloadManager::index::tab m_init_position ;
 		std::vector< entry > m_entries ;
 		tableWidget * m_table ;
 	};
 
-	downloadManager( const Context& ctx,
-	                 QPushButton& cancelButton,
-	                 settings& s ) :
+	downloadManager( const Context& ctx,QPushButton& cb,settings& s ) :
 		m_ctx( ctx ),
-		m_cancelButton( cancelButton ),
+		m_cancelButton( cb ),
 		m_settings( s )
 	{
 	}
@@ -282,29 +281,28 @@ public:
 	{
 		m_cancelled = true ;
 	}
-	template< typename Function,typename Finished >
+	template< typename Event >
 	void monitorForFinished( const engines::engine& engine,
 				 int index,
 				 engines::ProcessExitState exitState,
-				 Function function,
-				 Finished finished )
+				 Event event )
 	{
+		m_currentlyDownloadingNumber-- ;
+
 		if( m_cancelled ){
 
 			m_cancelButton.setEnabled( false ) ;
 
 			auto a = index ;
 			auto b = m_index.lastIndex() ;
-			auto c = m_index.batchDownloading() ;
-			auto d = finishedStatus::state::cancelled ;
+			auto c = finishedStatus::state::cancelled ;
 
-			finished( { a,b,c,d,std::move( exitState ) } ) ;
+			event.finished( { a,b,c,exitState.move() } ) ;
 		}else{
 			m_counter++ ;
 
 			auto a = index ;
 			auto b = m_index.lastIndex() ;
-			auto c = m_index.batchDownloading() ;
 
 			if( m_counter == m_index.count() ){
 
@@ -313,28 +311,50 @@ public:
 					m_cancelButton.setEnabled( false ) ;
 				}
 
-				auto d = finishedStatus::state::done ;
+				auto c = finishedStatus::state::done ;
 
-				finished( { a,b,c,d,std::move( exitState ) } ) ;
+				event.finished( { a,b,c,exitState.move() } ) ;
 			}else{
-				auto d = finishedStatus::state::running ;
+				auto c = finishedStatus::state::running ;
 
-				finished( { a,b,c,d,std::move( exitState ) } ) ;
+				event.finished( { a,b,c,exitState.move() } ) ;
 
 				if( m_index.hasNext() ){
 
-					function( engine,m_index.value() ) ;
+					event.next( engine,m_index.value() ) ;
 				}
 			}
 		}
 	}
+	template< typename ConcurrentDownload >
+	void download_add( const engines::engine& engine,
+			   downloadManager::index index,
+			   size_t maxNumberOfConcurrency,
+			   ConcurrentDownload concurrentDownload )
+	{
+		m_maximumConcurrency = maxNumberOfConcurrency ;
+
+		auto idx = index.value() ;
+
+		m_index.add( index.move() ) ;
+
+		if( m_currentlyDownloadingNumber < m_maximumConcurrency ){
+
+			m_cancelButton.setEnabled( true ) ;
+
+			concurrentDownload( engine,idx ) ;
+		}
+	}
+
 	template< typename ConcurrentDownload >
 	void download( downloadManager::index index,
 		       const engines::engine& engine,
 		       size_t maxNumberOfConcurrency,
 		       ConcurrentDownload concurrentDownload )
 	{
-		m_index = std::move( index ) ;
+		m_index = index.move() ;
+
+		m_maximumConcurrency = maxNumberOfConcurrency ;
 
 		m_counter = 0 ;
 		m_cancelled = false ;
@@ -343,7 +363,7 @@ public:
 		m_cancelButton.setEnabled( true ) ;
 		m_index.table().setEnabled( true ) ;
 
-		auto min = std::min( m_index.count(),maxNumberOfConcurrency ) ;
+		auto min = std::min( m_index.count(),m_maximumConcurrency ) ;
 
 		for( size_t s = 0 ; s < min ; s++ ){
 
@@ -351,8 +371,7 @@ public:
 		}
 	}
 	template< typename Options,typename Logger,typename TermSignal >
-	void download( const engines::engine& engine,
-		       QStringList cliOptions,
+	void download( QStringList cliOptions,
 		       const QString& url,
 		       TermSignal conn,
 		       Options opts,
@@ -363,13 +382,11 @@ public:
 
 		cliOptions.append( url ) ;
 
-		auto ctx = utility::make_ctx( engine,
-					      std::move( opts ),
-					      std::move( logger ),
-					      std::move( conn ),
-					      channel ) ;
+		auto ctx = utility::make_ctx( opts.move(),logger.move(),conn.move(),channel ) ;
 
-		utility::run( cliOptions,QString(),std::move( ctx ) ) ;
+		m_currentlyDownloadingNumber++ ;
+
+		utility::run( cliOptions,QString(),ctx.move() ) ;
 	}
 	template< typename Options,typename Logger,typename TermSignal,typename OptionUpdater >
 	void download( const engines::engine& engine,
@@ -377,11 +394,13 @@ public:
 		       const QString& uiDownloadOptions,
 		       const QString& url,
 		       const Context& cctx,
-		       TermSignal terminator,
+		       TermSignal term,
 		       Options opts,
 		       Logger logger,
 		       utility::ProcessOutputChannels channel = utility::ProcessOutputChannels() )
 	{
+		m_currentlyDownloadingNumber++ ;
+
 		const auto& m = m_index.options() ;
 
 		const auto& uiIndex = m_index.uiIndex() ;
@@ -396,15 +415,11 @@ public:
 
 		utility::updateOptionsStruct opt{ m,engine,m_settings,args,uiIndex,fd,{ url },e,cctx } ;
 
-		auto ctx = utility::make_ctx( engine,
-					      std::move( opts ),
-					      std::move( logger ),
-					      std::move( terminator ),
-					      channel ) ;
+		auto ctx = utility::make_ctx( opts.move(),logger.move(),term.move(),channel ) ;
 
-		utility::run( optsUpdater( utility::updateOptions( opt ) ),
-			      args.credentials(),
-			      std::move( ctx ) ) ;
+		auto u = optsUpdater( utility::updateOptions( opt ) ) ;
+
+		utility::run( std::move( u ),args.credentials(),ctx.move() ) ;
 	}
 private:
 	template< typename Cxt >
@@ -417,9 +432,11 @@ private:
 			ctx.TabManager().disableAll() ;
 		}
 	}
-	size_t m_counter ;
+	size_t m_counter = 0 ;
 	downloadManager::index m_index ;
-	bool m_cancelled ;
+	size_t m_maximumConcurrency ;
+	size_t m_currentlyDownloadingNumber = 0 ;
+	bool m_cancelled = false ;
 	const Context& m_ctx ;
 	QPushButton& m_cancelButton ;
 	settings& m_settings ;
@@ -444,6 +461,10 @@ public:
 	const downloadManager::finishedStatus& finishedStatus() const
 	{
 		return m_status ;
+	}
+	reportFinished move()
+	{
+		return std::move( *this ) ;
 	}
 private:
 	const engines::engine * m_engine = nullptr ;

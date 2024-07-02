@@ -167,7 +167,7 @@ void tableWidget::replace( tableWidget::entry e,int r,sizeHint s )
 {
 	auto row = static_cast< size_t >( r ) ;
 
-	m_items[ row ] = std::move( e ) ;
+	m_items[ row ] = e.move() ;
 
 	auto label = new QLabel() ;
 	label->setAlignment( Qt::AlignCenter ) ;
@@ -183,6 +183,11 @@ void tableWidget::replace( tableWidget::entry e,int r,sizeHint s )
 	}
 
 	item->setText( m_items[ row ].uiText ) ;
+}
+
+void tableWidget::replace( const QJsonArray& array,int row )
+{
+	m_items[ static_cast< size_t >( row ) ].mediaProperties = array ;
 }
 
 int tableWidget::addRow()
@@ -203,13 +208,29 @@ int tableWidget::addRow()
 
 int tableWidget::addItem( tableWidget::entry e,tableWidget::sizeHint s )
 {
-	m_items.emplace_back( std::move( e ) ) ;
-
-	const auto& entry = m_items.back() ;
-
 	auto row = m_table.rowCount() ;
 
+	if( e.showFirst && row ){
+
+		auto m = m_items.begin() ;
+
+		if( m->banner ){
+
+			row = 1 ;
+
+			m_items.insert( m + 1,e.move() ) ;
+		}else{
+			row = 0 ;
+
+			m_items.insert( m,e.move() ) ;
+		}
+	}else{
+		m_items.emplace_back( e.move() ) ;
+	}
+
 	m_table.insertRow( row ) ;
+
+	const auto& entry = m_items[ row ] ;
 
 	auto label = new QLabel() ;
 	label->setAlignment( Qt::AlignHCenter | Qt::AlignVCenter ) ;
@@ -265,7 +286,25 @@ void tableWidget::selectRow( QTableWidgetItem * current,QTableWidgetItem * previ
 			table->setCurrentCell( current->row(),table->columnCount() - 1 ) ;
 		}else{
 			_update_table_row( current,true ) ;
-			_update_table_row( previous,false ) ;
+
+			if( QGuiApplication::keyboardModifiers() != Qt::ControlModifier ){
+
+				auto currentRow = current->row() ;
+
+				auto table = current->tableWidget() ;
+
+				auto lastColumn = table->columnCount() - 1 ;
+
+				for( int row = 0 ; row < table->rowCount() ; row++ ){
+
+					if( row != currentRow ){
+
+						auto item = table->item( row,lastColumn ) ;
+
+						_update_table_row( item,false ) ;
+					}
+				}
+			}
 		}
 
 	}else if( current && !previous ){
@@ -312,6 +351,11 @@ void tableWidget::selectLast()
 		m_table.setCurrentCell( m_table.rowCount() - 1,m_table.columnCount() - 1 ) ;
 		m_table.scrollToBottom() ;
 	}
+}
+
+void tableWidget::selectRow( int row )
+{
+	m_table.setCurrentCell( row,m_table.columnCount() - 1 ) ;
 }
 
 void tableWidget::setEnabled( bool e )
@@ -384,6 +428,11 @@ bool tableWidget::rowIsVisible( int row )
 	return !m_table.isRowHidden( row ) ;
 }
 
+bool tableWidget::rowIsSelected( int row )
+{
+	return m_table.item( row,m_table.columnCount() - 1 )->isSelected() ;
+}
+
 bool tableWidget::containsHiddenRows()
 {
 	for( int row = 0 ; row < m_table.rowCount() ; row++ ){
@@ -408,6 +457,21 @@ bool tableWidget::allFinishedWithSuccess()
 	}
 
 	return true ;
+}
+
+int tableWidget::finishWithSuccess()
+{
+	int m = 0 ;
+
+	for( int i = 0 ; i < m_table.rowCount() ; i++ ){
+
+		if( downloadManager::finishedStatus::finishedWithSuccess( this->runningState( i ) ) ){
+
+			m++ ;
+		}
+	}
+
+	return m ;
 }
 
 QString tableWidget::completeProgress( int firstRow )
@@ -456,7 +520,7 @@ QString tableWidget::completeProgress( int firstRow )
 	return QObject::tr( "Completed: %1%, Not Started: %2, Succeeded: %3, Failed: %4, Cancelled: %5" ).arg( a,b,c,d,e ) ;
 }
 
-tableWidget::tableWidget( QTableWidget& t,const QFont&,int init,int tA ) :
+tableWidget::tableWidget( QTableWidget& t,const QFont&,int init,Qt::Alignment tA ) :
 	m_table( t ),
 	m_init( init ),
 	m_textAlignment( tA )

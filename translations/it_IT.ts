@@ -116,10 +116,6 @@
         <translation>Opzioni</translation>
     </message>
     <message>
-        <source>Show Version Info When Starting</source>
-        <translation>Visualizza info versione all&apos;avvio</translation>
-    </message>
-    <message>
         <source>Download</source>
         <translation>Download</translation>
     </message>
@@ -256,16 +252,8 @@
         <translation>Gestione URL</translation>
     </message>
     <message>
-        <source>Check For Updates</source>
-        <translation>Controlla aggiornamenti</translation>
-    </message>
-    <message>
         <source>Set Download Options</source>
         <translation>Imposta opzioni download</translation>
-    </message>
-    <message>
-        <source>Enable Library Tab(May Cause The UI To Freeze For A Very Long TIme If Download Folder Has Too Many Entries)</source>
-        <translation>Abilita scheda Libreria (può causare il blocco dell&apos;interfaccia utente per molto tempo se la cartella di download ha troppe voci)</translation>
     </message>
     <message>
         <source>Update Plugin</source>
@@ -316,10 +304,6 @@
         <translation>Impostazioni proxy</translation>
     </message>
     <message>
-        <source>Use System Proxy Configuration(Windows Only)</source>
-        <translation>Usa configurazione proxy di sistema (solo Windows)</translation>
-    </message>
-    <message>
         <source>Use Manually Specified Proxy Configuration</source>
         <translation>Usa configurazione proxy manuale</translation>
     </message>
@@ -339,16 +323,44 @@ Exampe 2: ${gateway}:8080</source>
 Esempio 1: 192.168.93.89:8080
 Esempio 2: ${gateway}:8080</translation>
     </message>
+    <message>
+        <source>Use System Proxy Configuration</source>
+        <translation>Usa configurazione proxy di sistema</translation>
+    </message>
+    <message>
+        <source>Show Version Info And Autodownload Updates</source>
+        <translation>Visualizza info versione e aggiornamenti download automatico</translation>
+    </message>
+    <message>
+        <source>Show Version Info And Latest Version Info</source>
+        <translation>Visualizza info versione auttaule e più recente</translation>
+    </message>
+    <message>
+        <source>Show Version Info Only</source>
+        <translation>Visualizza info solo sulla versione</translation>
+    </message>
+    <message>
+        <source>Do Nothing</source>
+        <translation>Non fare nulla</translation>
+    </message>
+    <message>
+        <source>Actions At Startup</source>
+        <translation>Azioni all&apos;avviodel programma</translation>
+    </message>
+    <message>
+        <source>File Size</source>
+        <translation>Dim. file</translation>
+    </message>
+    <message>
+        <source>Enable Library Tab</source>
+        <translation>Abilita scheda Libreria</translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
     <message>
         <source>Destination</source>
         <translation>Destinazione</translation>
-    </message>
-    <message>
-        <source>Text</source>
-        <translation>Testo</translation>
     </message>
     <message>
         <source>Russian (Russia)</source>
@@ -431,14 +443,6 @@ Esempio 2: ${gateway}:8080</translation>
         <translation>2. Vai alla scheda &quot;Opzioni generali&quot;.</translation>
     </message>
     <message>
-        <source>Author</source>
-        <translation>Autore</translation>
-    </message>
-    <message>
-        <source>3. Uncheck &quot;Show Version Info When Starting&quot;.</source>
-        <translation>3: Disattiva la casella &quot;All&apos;avvio visualizza informazioni versione&quot;.</translation>
-    </message>
-    <message>
         <source>Japanese (Japan)</source>
         <translation>Giapponese (Giappone)</translation>
     </message>
@@ -473,10 +477,6 @@ Esempio 2: ${gateway}:8080</translation>
     <message>
         <source>Download</source>
         <translation>Download</translation>
-    </message>
-    <message>
-        <source>Checking installed version of</source>
-        <translation>Controllo versione installata di</translation>
     </message>
     <message>
         <source>Failed to find executable &quot;%1&quot;</source>
@@ -681,26 +681,6 @@ Per maggiori dettagli vedi la GNU General Public License .</translation>
         <translation>Versione disponibile %1, in aggiornamento</translation>
     </message>
     <message>
-        <source>Engine Name</source>
-        <translation>Nome engine</translation>
-    </message>
-    <message>
-        <source>Installed Version</source>
-        <translation>Versione installata</translation>
-    </message>
-    <message>
-        <source>Latest Version</source>
-        <translation>Versione aggiornata</translation>
-    </message>
-    <message>
-        <source>There Is An Update For </source>
-        <translation>C&apos;è un aggiornamento per </translation>
-    </message>
-    <message>
-        <source>Update Found</source>
-        <translation>Disponibile aggiornamento</translation>
-    </message>
-    <message>
         <source>Download Failed, Engine crashed</source>
         <translation>Download non riuscito, Engine bloccato</translation>
     </message>
@@ -838,7 +818,127 @@ Per maggiori dettagli vedi la GNU General Public License .</translation>
     </message>
     <message>
         <source>Warning: Skipping Clipboard Content</source>
-        <translation type="unfinished"></translation>
+        <translation>Avviso: salto contenuto appunti</translation>
+    </message>
+    <message>
+        <source>Project Page</source>
+        <translation>Pagina web progetto</translation>
+    </message>
+    <message>
+        <source>Show Folders First</source>
+        <translation>Visualizza prima le cartelle</translation>
+    </message>
+    <message>
+        <source>Arrange In Ascending Order</source>
+        <translation>Disponi in ordine crescente</translation>
+    </message>
+    <message>
+        <source>Arrange By Date</source>
+        <translation>Ordina per data</translation>
+    </message>
+    <message>
+        <source>Arrange By Name</source>
+        <translation>Ordina per nome</translation>
+    </message>
+    <message>
+        <source>Arrange In Descending Order</source>
+        <translation>Disponi in ordine decrescente</translation>
+    </message>
+    <message>
+        <source>Filter</source>
+        <translation>Filtro</translation>
+    </message>
+    <message>
+        <source>No Filter</source>
+        <translation>Nessun filtro</translation>
+    </message>
+    <message>
+        <source>3. Click &quot;Actions At StartUp&quot; Menu.</source>
+        <translation>3. Fai clic sul menu &quot;Azioni all&apos;avvio del programma&quot;.</translation>
+    </message>
+    <message>
+        <source>4. Select &quot;Do Nothing&quot;.</source>
+        <translation>4. Seleziona &quot;Non fare nulla&quot;.</translation>
+    </message>
+    <message>
+        <source>There Is An Update For %1</source>
+        <translation>È disponibile un aggiornamento di %1</translation>
+    </message>
+    <message>
+        <source>Newest Version Is: %1</source>
+        <translation>Versione più recente: %1</translation>
+    </message>
+    <message>
+        <source>Failed To Start Executable %1</source>
+        <translation>Impossibile avviare l&apos;eseguibile %1</translation>
+    </message>
+    <message>
+        <source>Copy Url</source>
+        <translation>Copia URL</translation>
+    </message>
+    <message>
+        <source>Open Url With %1</source>
+        <translation>Apri URL con %1</translation>
+    </message>
+    <message>
+        <source>Copy Url %1</source>
+        <translation>Copiua URL %1</translation>
+    </message>
+    <message>
+        <source>Open Url %1 With %2</source>
+        <translation>Apri URL %1 con %2</translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation>Dimensione</translation>
+    </message>
+    <message>
+        <source>Windows&apos; Secure Channel</source>
+        <translation>Canale sicuro di Windows</translation>
+    </message>
+    <message>
+        <source>Trouble Ahead, Failed To Delete Folder: %1</source>
+        <translation>Problemi in vista, impossibile eliminare la cartella: %1</translation>
+    </message>
+    <message>
+        <source>Other Websites</source>
+        <translation>Altri siti web</translation>
+    </message>
+    <message>
+        <source>Extract Audio</source>
+        <translation>Estrai audio</translation>
+    </message>
+    <message>
+        <source>Extract Audio As MP3</source>
+        <translation>Estrai audio come MP3</translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation>Arabo</translation>
+    </message>
+    <message>
+        <source>Best Available Audio Only+Thumbnail</source>
+        <translation>Solo miglior audio disponibile+miniatura</translation>
+    </message>
+    <message>
+        <source>Youtube</source>
+        <translation>Youtube</translation>
+    </message>
+    <message>
+        <source>Autoupdate Disabled For %1</source>
+        <translation>Aggiornamento automatico disabilitato per %1</translation>
+    </message>
+    <message>
+        <source>Newest Version Is %1, AutoUpdate Disabled</source>
+        <translation>La versione più recente è %1, aggiornamento automatico disabilitato</translation>
+    </message>
+    <message>
+        <source>Author: %1</source>
+        <translation>Autore: %1</translation>
+    </message>
+    <message>
+        <source>Like Count: %1</source>
+        <translation>N. mi piace: %1</translation>
     </message>
 </context>
 <context>
@@ -896,12 +996,20 @@ Per maggiori dettagli vedi la GNU General Public License .</translation>
         <translation>Download sottotitoli</translation>
     </message>
     <message>
-        <source>Copy Url %1</source>
-        <translation>Copia URL %1</translation>
-    </message>
-    <message>
         <source>Download Media Part</source>
         <translation>Scarica parte multimediale</translation>
+    </message>
+    <message>
+        <source>Sort By Date Ascending</source>
+        <translation>Ordina per data crescente</translation>
+    </message>
+    <message>
+        <source>Sort By Date Descending</source>
+        <translation>Ordina per data decrescente</translation>
+    </message>
+    <message>
+        <source>Sort By Likes</source>
+        <translation>Ordina per n. Mi piace</translation>
     </message>
 </context>
 <context>
@@ -933,6 +1041,10 @@ Per maggiori dettagli vedi la GNU General Public License .</translation>
     <message>
         <source>Copy</source>
         <translation>Copia</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation>Modifica</translation>
     </message>
 </context>
 <context>

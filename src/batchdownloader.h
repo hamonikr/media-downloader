@@ -89,9 +89,9 @@ public:
 				}
 			}
 		}
-		QByteArray toJson() const
+		QJsonDocument toJsonDoc() const
 		{
-			return QJsonDocument( obj ).toJson( QJsonDocument::JsonFormat::Compact ) ;
+			return QJsonDocument( obj ) ;
 		}
 		QJsonObject obj ;
 		QString url ;
@@ -109,6 +109,10 @@ public:
 	Items( const QString& uiText,const QString& url )
 	{
 		m_entries.emplace_back( uiText,url ) ;
+	}
+	Items move()
+	{
+		return std::move( *this ) ;
 	}
 	void add( QJsonObject obj )
 	{
@@ -190,6 +194,7 @@ class batchdownloader : public QObject
 {
 	Q_OBJECT
 public:
+
 	batchdownloader( const Context& ) ;
 	void init_done() ;
 	void enableAll() ;
@@ -199,48 +204,72 @@ public:
 	void tabEntered() ;
 	void tabExited() ;
 	void exiting() ;
+	void saveData() ;
 	void gotEvent( const QJsonObject& ) ;
 	void updateEnginesList( const QStringList& ) ;
 	void setShowMetaData( bool ) ;
 	void showComments( const engines::engine&,const QString& ) ;
 	void clipboardData( const QString& ) ;
-private slots:
-	void addItemUiSlot( ItemEntry ) ;
-	void networkData( utility::networkReply ) ;
+	void textAlignmentChanged( Qt::LayoutDirection ) ;
+private
+slots:
 	void addTextToUi( const QByteArray&,int ) ;
-	void reportFinishedStatus( const reportFinished& ) ;
+signals:
+	void reportFStatus( const reportFinished&,const QStringList& ) ;
+	void addItemUiSignal( ItemEntry ) ;
+	void addTextToUiSignal( const QByteArray&,int ) ;
 private:
+	void networkData( const utility::networkReply& ) ;
+	void addItemUiSlot( ItemEntry ) ;
+	void reportFinishedStatus( const reportFinished&,const QStringList& ) ;
 	enum class listType{ COMMENTS,SUBTITLES,MEDIA_OPTIONS } ;
+	void setDefaultEngineAndOptions( Items::entry& ) ;
 	void showList( batchdownloader::listType,const engines::engine&,const QString&,int ) ;
+	void setDownloadingOptions( int,tableWidget& ) ;
 	void showBDFrame( batchdownloader::listType ) ;
 	void saveComments( const QJsonArray&,const QString& filePath ) ;
 	void showComments( const QByteArray& ) ;
 	void showSubtitles( const QByteArray& ) ;
 	void saveSubtitles() ;
+	void sortComments() ;
+	bool saveSubtitles( const QString& url,const QString& ext,const QString& title ) ;
 	void normalizeFilePath( QString& ) ;
 	void setVisibleMediaSectionCut( bool ) ;
 	QString setSubtitleString( const QJsonObject&,const QString& ) ;
 	void parseDataFromFile( const QByteArray& ) ;
+	void parseDataFromObject( const QJsonObject&,const QJsonArray& ) ;
 	void getListFromFile( QMenu& ) ;
 	void getListFromFile( const QString&,bool ) ;
 	QString defaultEngineName() ;
 	const engines::engine& defaultEngine() ;
 	void clearScreen() ;
+	void showCustomContext() ;
 	void addToList( const QString&,bool autoDownload = false,bool showThumbnails = true ) ;
 	void download( const engines::engine&,downloadManager::index ) ;
+	void download( const engines::engine&,Items ) ;
 	void download( const engines::engine&,int = 0 ) ;
 	void downloadEntry( const engines::engine&,int ) ;
 	void addItem( int,bool,const utility::MediaEntry& ) ;
 	void addItemUi( int,bool,const utility::MediaEntry& ) ;
-	int addItemUi( const QPixmap& pixmap,int,bool,const utility::MediaEntry& ) ;
 	void showThumbnail( const engines::engine&,int,const QString& url,bool ) ;
+	int addItemUi( const QPixmap& pixmap,int,bool,const utility::MediaEntry& ) ;
 	int addItemUi( const QPixmap& pixmap,
 		       int index,
 		       tableWidget& table,
 		       Ui::MainWindow& ui,
 		       const utility::MediaEntry& media ) ;
 	void showThumbnail( const engines::engine&,Items,bool = false,bool = false ) ;
+	struct networkCtx
+	{
+		utility::MediaEntry media ;
+		int index ;
+		networkCtx move()
+		{
+			return std::move( *this ) ;
+		}
+	} ;
 
+	void networkResult( networkCtx,const utils::network::reply& ) ;
 	const Context& m_ctx ;
 	settings& m_settings ;
 	Ui::MainWindow& m_ui ;
@@ -248,9 +277,8 @@ private:
 	tabManager& m_tabManager ;
 	bool m_showMetaData ;
 	tableWidget m_table ;
-	tableMiniWidget< QJsonObject > m_tableWidgetBDList ;
+	tableMiniWidget< QJsonObject,5 > m_tableWidgetBDList ;
 	QString m_commentsFileName ;
-	int m_networkRunning = false ;
 	QStringList m_optionsList ;
 	QLineEdit m_lineEdit ;
 	QPixmap m_defaultVideoThumbnail ;
@@ -262,6 +290,28 @@ private:
 
 	QByteArray m_downloadingComments ;
 
+	bool m_done = false ;
+	bool m_startAutoDownload ;
+
+	class de
+	{
+	public:
+		de( batchdownloader& e ) :
+			m_parent( e )
+		{
+		}
+		void operator()( const engines::engine& engine,int index )
+		{
+			m_parent.downloadEntry( engine,index ) ;
+		}
+		de move()
+		{
+			return std::move( *this ) ;
+		}
+	private:
+		batchdownloader& m_parent ;
+	} ;
+
 	class BatchLogger
 	{
 	public:
@@ -270,6 +320,10 @@ private:
 			m_logger( l ),
 			m_id( utility::concurrentID() )
 		{
+		}
+		BatchLogger move()
+		{
+			return std::move( *this ) ;
 		}
 		void add( const QString& e )
 		{
@@ -300,6 +354,10 @@ private:
 		{
 			return m_localLogger.toLine() ;
 		}
+		const QStringList& fileNames() const
+		{
+			return m_localLogger.fileNames() ;
+		}
 	private:
 		Logger::Data m_localLogger ;
 		Logger& m_logger ;
@@ -309,13 +367,13 @@ private:
 	class subtitlesTimer
 	{
 	public:
-		subtitlesTimer( tableMiniWidget< QJsonObject >& table ) ;
+		subtitlesTimer( tableMiniWidget< QJsonObject,5 >& table ) ;
 		void start() ;
 		void stop() ;
 	private:
-		engines::engine::functions::preProcessing m_banner ;
+		engines::engine::baseEngine::preProcessing m_banner ;
 		QTimer m_timer ;
-		tableMiniWidget< QJsonObject >& m_table ;
+		tableMiniWidget< QJsonObject,5 >& m_table ;
 	} m_subtitlesTimer ;
 
 	template< typename LogFilter >
@@ -326,6 +384,10 @@ private:
 			m_logger( std::make_shared< BatchLogger >( l ) ),
 			m_logFilter( std::move( f ) )
 		{
+		}
+		BatchLoggerWrapper< LogFilter > move()
+		{
+			return std::move( *this ) ;
 		}
 		void add( const QByteArray& e )
 		{
@@ -352,6 +414,10 @@ private:
 
 			return data ;
 		}
+		const QStringList& fileNames() const
+		{
+			return m_logger->fileNames() ;
+		}
 		void logError( const QByteArray& data )
 		{
 			if( m_logFilter( data ) ){
@@ -362,37 +428,23 @@ private:
 	private:
 		std::shared_ptr< BatchLogger > m_logger ;
 		LogFilter m_logFilter ;
-	};
-
-	template< typename LogFilter >
-	BatchLoggerWrapper< LogFilter > make_logger( Logger& l,LogFilter f )
-	{
-		return { l,std::move( f ) } ;
-	}
-
-	template< typename Logger >
-	struct opts
-	{
-		const Context& ctx ;
-		utility::printOutPut& printOutPut ;
-		bool listRequested ;
-		int index ;
-		Logger batchLogger ;
 	} ;
 
-	template< typename Logger,typename Functions >
-	auto make_options( const Context& ctx,
-			   const engines::engine& engine,
-			   utility::printOutPut& debug,
-			   bool listRequested,
-			   int index,
-			   Logger logger,
-			   Functions f )
+	class defaultLogger
 	{
-		opts< Logger > oo{ ctx,debug,listRequested,index,std::move( logger ) } ;
-
-		return utility::options< opts< Logger >,Functions >( engine,std::move( oo ),std::move( f ) ) ;
-	}
+	public:
+		defaultLogger()
+		{
+		}
+		defaultLogger move()
+		{
+			return std::move( *this ) ;
+		}
+		bool operator()( const QByteArray& )
+		{
+			return true ;
+		}
+	} ;	
 };
 
 #endif

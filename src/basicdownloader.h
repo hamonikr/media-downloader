@@ -42,6 +42,7 @@ public:
 	void enableAll() ;
 	void disableAll() ;
 	void exiting() ;
+	void textAlignmentChanged( Qt::LayoutDirection ) ;
 	void gotEvent( const QJsonObject& e ) ;
 	void resetMenu( const QStringList& = {} ) ;
 	void retranslateUi() ;
@@ -61,28 +62,11 @@ private:
 
 	basicdownloader::engine defaultEngine() ;
 
-	struct opts
-	{
-		const engines::engine& engine ;
-		tableWidget& table ;
-
-		const Context& ctx ;
-		utility::printOutPut& printOutPut ;
-		bool listRequested ;
-		int index ;
-	} ;
-
-	template< typename Functions >
-	auto make_options( const engines::engine& engine,basicdownloader::opts opts,Functions functions )
-	{
-		return utility::options< basicdownloader::opts,Functions >( engine,std::move( opts ),std::move( functions ) ) ;
-	}
-
 	const Context& m_ctx ;
 	settings& m_settings ;
 	Ui::MainWindow& m_ui ;
 	tabManager& m_tabManager ;
-	tableMiniWidget< engines::engine::functions::mediaInfo > m_tableList ;
+	tableMiniWidget< engines::engine::baseEngine::mediaInfo,5 > m_tableList ;
 	QStringList m_optionsList ;
 	QTableWidget m_bogusTableOriginal ;
 	tableWidget m_bogusTable ;

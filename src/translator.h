@@ -30,10 +30,13 @@
 
 #include "settings.h"
 
+class Context ;
+
 class translator
 {
 public:
 	translator( settings&,QApplication& ) ;
+	void setContext( Context * ) ;
 	void setLanguage( const QString& e ) ;
 	void setDefaultLanguage() ;
 	~translator() ;
@@ -47,6 +50,10 @@ public:
 		QString UINameTranslated ;
 		const char * UINameUnTranslated ;
 		QString internalName ;
+		entry move()
+		{
+			return std::move( *this ) ;
+		}
 	} ;
 	QAction * addAction( QMenu * m,translator::entry,bool permanentEntry = false ) ;
 	QMenu * addMenu( QMenu * m,translator::entry,bool permanentEntry = false ) ;
@@ -57,6 +64,7 @@ private:
 	void clear( void ) ;
 	QApplication& m_qapp ;
 	QTranslator * m_translator = nullptr ;
+	Context * m_ctx = nullptr ;
 	std::vector< entry > m_languages ;
 	std::vector< std::pair< QAction *,entry > > m_actions ;
 	std::vector< std::pair< QMenu *,entry > > m_menus ;

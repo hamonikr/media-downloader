@@ -34,6 +34,7 @@
 #include <type_traits>
 #include <memory>
 #include <iostream>
+#include <vector>
 
 #include "translator.h"
 
@@ -47,7 +48,14 @@
 
 #include "networkAccess.h"
 
+#ifdef Q_OS_WIN
+#if QT_VERSION >= QT_VERSION_CHECK( 6,6,0 )
+#include <QNtfsPermissionCheckGuard>
+#endif
+#endif
+
 class Context ;
+class ContextWinId ;
 
 class tabManager ;
 
@@ -58,6 +66,89 @@ namespace Ui
 
 namespace utility
 {
+	template< typename T >
+	class vector
+	{
+	public:
+		utility::vector< T > move()
+		{
+			return std::move( *this ) ;
+		}
+		void pop_back()
+		{
+			m_vector.pop_back() ;
+		}
+		template< typename E >
+		void addAsIterator( E&& e )
+		{
+			for( auto it = e.begin() ; it != e.end() ; it++ ){
+
+				m_vector.emplace_back( it ) ;
+			}
+		}
+		template< typename E >
+		void add( const E& e )
+		{
+			for( const auto& it : e ){
+
+				m_vector.emplace_back( it ) ;
+			}
+		}
+		template< typename E >
+		void sort( const E& e )
+		{
+			std::sort( m_vector.begin(),m_vector.end(),e ) ;
+		}
+		template< typename ... E >
+		void emplace_back( E&& ... e )
+		{
+			m_vector.emplace_back( std::forward< E >( e ) ... ) ;
+		}
+		void clear()
+		{
+			m_vector.clear() ;
+		}
+		const T& back() const
+		{
+			return m_vector.back() ;
+		}
+		auto size() const
+		{
+			return m_vector.size() ;
+		}
+		template< typename Function >
+		void rEach( Function&& function ) const
+		{
+			for( auto it = m_vector.rbegin() ; it != m_vector.rend() ; it++ ){
+
+				function( *it ) ;
+			}
+		}
+		template< typename Function,
+			  typename std::enable_if< std::is_void< util::types::result_of< Function,T > >::value,int >::type = 0 >
+		void each( Function&& function ) const
+		{
+			for( const auto& it : m_vector ){
+
+				function( it ) ;
+			}
+		}
+		template< typename Function,
+			  typename std::enable_if< std::is_same< util::types::result_of< Function,T >,bool >::value,int >::type = 0 >
+		void each( Function&& function ) const
+		{
+			for( const auto& it : m_vector ){
+
+				if( function( it ) ){
+
+					break ;
+				}
+			}
+		}
+	private:
+		std::vector< T > m_vector ;
+	};
+
 	class debug
 	{
 	public:
@@ -332,12 +423,34 @@ namespace utility
 	{
 	public:
 		printOutPut( const utility::cliArguments& ) ;
-		void operator()( const QByteArray& ) ;
+		void operator()( int,const QByteArray& ) ;
 		operator bool() const ;
 	private:
 		QFile m_outPutFile ;
 		enum class status{ qdebug,debug,notSet } m_status = utility::printOutPut::status::notSet ;
 	} ;
+	class checkPermissions
+	{
+	public:
+		void enable() ;
+		void disable() ;
+	private:
+		#ifdef Q_OS_WIN
+		#if QT_VERSION >= QT_VERSION_CHECK( 6,6,0 )
+			QNtfsPermissionCheckGuard m_guard ;
+		#endif
+		#endif
+	} ;
+	struct PlayerOpts
+	{
+		PlayerOpts( QString e,QString n ) :
+			exePath( std::move( e ) ),name( std::move( n ) )
+		{
+		}
+		QString exePath ;
+		QString name ;
+	} ;
+	std::vector< utility::PlayerOpts > getMediaPlayers() ;
 	void setDefaultEngine( const Context& ctx,const QString& name );
 	const engines::engine& resolveEngine( const tableWidget&,
 					      const engines::engine&,
@@ -356,8 +469,11 @@ namespace utility
 	void setPermissions( QFile& ) ;
 	void setPermissions( const QString& ) ;
 	void failedToParseJsonData( Logger&,const QJsonParseError& ) ;
+	bool runningGitVersion() ;
+	bool Qt6Version() ;
 	QString runningVersionOfMediaDownloader() ;
 	QString aboutVersionInfo() ;
+	QString compileTimeVersion() ;
 	void setRunningVersionOfMediaDownloader( const QString& ) ;
 	void setHelpVersionOfMediaDownloader( const QString& ) ;
 	QString homePath() ;
@@ -371,11 +487,15 @@ namespace utility
 		downLoadOptions( QString e ) : downloadOptions( std::move( e ) )
 		{
 		}
+		downLoadOptions move()
+		{
+			return std::move( *this ) ;
+		}
 		bool hasExtraOptions = false ;
 		QString downloadOptions ;
 	} ;
 	utility::downLoadOptions setDownloadOptions( const engines::engine&,tableWidget&,int,const QString& = {} ) ;
-	void ntfsEnablePermissionChecking( bool ) ;
+	bool copyFile( const QString& src,const QString& dst,bool = true ) ;
 	bool pathIsFolderAndExists( const QString& ) ;
 	bool platformIsWindows() ;
 	bool platformIs32Bit() ;
@@ -384,9 +504,16 @@ namespace utility
 	bool platformisOS2() ;
 	bool platformIsNOTWindows() ;
 	bool platformIsLikeWindows() ;
+	bool addData( const QByteArray& ) ;
+	void contextMenuForDirectUrl( const QJsonArray&,const Context& ) ;
+	void deleteTmpFiles( const QString&,std::vector< QByteArray > ) ;
+	QString OSXApplicationDirPath() ;
+	QString OSXtranslationFilesPath() ;
+	QString OSX3rdPartyDirPath() ;
 	QString windowsApplicationDirPath() ;
 	QString windowsGateWayAddress() ;
-	QString windowsGetClipBoardText( const Context& ctx ) ;
+	QString windowsGetClipBoardText( const ContextWinId& ) ;
+	void windowsSetDarkModeTitleBar( const Context& ) ;
 	QByteArray barLine() ;
 	bool isRelativePath( const QString& ) ;
 	QString downloadFolder( const Context& ctx ) ;
@@ -436,7 +563,14 @@ namespace utility
 			m_index( index ),m_total( total )
 		{
 		}
-
+		QString total() const
+		{
+			return QString::number( m_total ) ;
+		}
+		QString index() const
+		{
+			return QString::number( m_index ) ;
+		}
 		QString toString( bool,const QStringList& ) const ;
 	private:
 		QString toString( int ) const ;
@@ -458,7 +592,25 @@ namespace utility
 		const Context& ctx ;
 	};
 
-	QStringList updateOptions( const updateOptionsStruct& ) ;
+	template< typename ... qLabel >
+	void alignText( Qt::LayoutDirection m,qLabel ... l )
+	{
+		Qt::Alignment alignment ;
+
+		if( m == Qt::LayoutDirection::LeftToRight ){
+
+			alignment = Qt::AlignmentFlag::AlignRight ;
+		}else{
+			alignment = Qt::AlignmentFlag::AlignLeft ;
+		}
+
+		for( auto s : { l ... } ){
+
+			s->setAlignment( alignment ) ;
+		}
+	}
+
+	QStringList updateOptions( const utility::updateOptionsStruct& ) ;
 
 	bool hasDigitsOnly( const QString& e ) ;
 
@@ -492,9 +644,17 @@ namespace utility
 		{
 			return m_showLogWindow ;
 		}
+		bool showRowLogWindow() const
+		{
+			return m_showRawLogWindow ;
+		}
 		void setShowLogWindow()
 		{
 			m_showLogWindow = true ;
+		}
+		void setShowRawLogWindow()
+		{
+			m_showRawLogWindow = true ;
 		}
 		bool clear() const
 		{
@@ -508,6 +668,7 @@ namespace utility
 		bool m_noneAreRunning ;
 		bool m_finishedSuccess ;
 		bool m_showLogWindow = false ;
+		bool m_showRawLogWindow = false ;
 		bool m_clear = false ;
 	};
 
@@ -775,6 +936,10 @@ namespace utility
 		{
 			QObject::disconnect( m_conn ) ;
 		}
+		Conn move()
+		{
+			return std::move( *this ) ;
+		}
 	private:
 		Function m_function ;
 		FunctionConnect m_functionConnect ;
@@ -848,25 +1013,23 @@ namespace utility
 		}
 	};
 
-	template< typename Function >
-	void setUpdefaultEngine( QComboBox& comboBox,
-				 const QString& defaultEngine,
-				 Function function )
+	template< typename Settings,typename TabName >
+	void setUpdefaultEngine( QComboBox& cb,const QString& d,Settings& s,TabName t )
 	{
-		for( int s = 0 ; s < comboBox.count() ; s++ ){
+		for( int s = 0 ; s < cb.count() ; s++ ){
 
-			if( comboBox.itemText( s ) == defaultEngine ){
+			if( cb.itemText( s ) == d ){
 
-				comboBox.setCurrentIndex( s ) ;
+				cb.setCurrentIndex( s ) ;
 
 				return ;
 			}
 		}
 
-		if( comboBox.count() > 0 ){
+		if( cb.count() > 0 ){
 
-			comboBox.setCurrentIndex( 0 ) ;
-			function( comboBox.itemText( 0 ) ) ;
+			cb.setCurrentIndex( 0 ) ;
+			s.setDefaultEngine( d,t ) ;
 		}
 	}
 
@@ -895,35 +1058,36 @@ namespace utility
 		QProcess::ProcessChannel m_channel ;
 	} ;
 
-	template< typename Tlogger,
-		  typename Options,
-		  typename Connection >
+	template< typename TLogger,typename Events,typename Connection >
 	class context
 	{
 	public:
-		context( const engines::engine& engine,
-			 ProcessOutputChannels channels,
-			 Tlogger&& logger,
-			 Options&& options,
+		context( ProcessOutputChannels channels,
+			 TLogger logger,
+			 Events events,
 			 Connection&& conn ) :
-			m_engine( engine ),
-			m_logger( std::move( logger ) ),
-			m_options( std::move( options ) ),
-			m_conn( std::move( conn ) ),
+			m_logger( logger.move() ),
+			m_events( events.move() ),
+			m_conn( conn.move() ),
 			m_channels( channels ),
+			m_engine( events.engine() ),
 			m_timer( std::make_unique< QTimer >() ),
 			m_cancelled( false )
 		{
 		}
-		void whenCreated( QProcess& exe,const engines::engine::exeArgs::cmd& cmd )
+		void whenCreated( QProcess& exe )
 		{
-			m_options.disableAll() ;
+			m_events.disableAll() ;
 
-			exe.setProcessEnvironment( m_options.processEnvironment() ) ;
+			exe.setProcessEnvironment( m_engine.processEnvironment() ) ;
 
-			m_logger.add( "cmd: " + m_engine.commandString( cmd ) ) ;
+			auto mm = "cmd: " + m_engine.commandString( m_cmd ) ;
 
-			const auto& df = m_options.downloadFolder() ;
+			m_logger.add( mm ) ;
+
+			m_events.printOutPut( mm.toUtf8() + "\n" ) ;
+
+			const auto& df = m_events.downloadFolder() ;
 
 			if( !QFile::exists( df ) ){
 
@@ -934,11 +1098,11 @@ namespace utility
 
 			exe.setProcessChannelMode( m_channels.channelMode() ) ;
 		}
-		void whenStarted( QProcess& exe,const QString& credentials )
+		void whenStarted( QProcess& exe )
 		{
 			m_conn.connect( [ this,&exe ]( auto& function,int index ){
 
-				auto m = function( m_engine,exe,m_options.index(),index ) ;
+				auto m = function( m_engine,exe,m_events.index(),index ) ;
 
 				if( m ){
 
@@ -954,29 +1118,26 @@ namespace utility
 
 					m_logger.add( [ this ]( Logger::Data& e,int id,bool s ){
 
-						m_engine.processData( e,m_timeCounter.stringElapsedTime(),id,s ) ;
+						auto m = m_timeCounter.stringElapsedTime() ;
+
+						m_engine.processData( e,m,id,s ) ;
 					} ) ;
 				} ) ;
 
 				m_timer->start( 1000 ) ;
 			}
 
-			m_engine.sendCredentials( credentials,exe ) ;
+			m_engine.sendCredentials( m_credentials,exe ) ;
 		}
 		void whenDone( int s,QProcess::ExitStatus e )
 		{
 			m_conn.disconnect() ;
 
-			m_timer->stop() ;
+			this->stopTimer() ;
 
 			auto m = m_timeCounter.elapsedTime() ;
 
 			engines::ProcessExitState state( m_cancelled,s,m,std::move( e ) ) ;
-
-			if( m_options.listRequested() ){
-
-				m_options.listRequested( state,std::move( m_data ) ) ;
-			}
 
 			m_logger.add( [ &,this ]( Logger::Data& e,int id,bool s ){
 
@@ -985,7 +1146,7 @@ namespace utility
 				m_engine.processData( e,d,id,s ) ;
 			} ) ;
 
-			m_options.done( std::move( state ) ) ;
+			m_events.done( state.move(),m_logger.fileNames() ) ;
 
 			m_logger.registerDone() ;
 		}
@@ -1004,36 +1165,16 @@ namespace utility
 					m_engine.processData( e,d,id,s ) ;
 				} ) ;
 
-				m_options.done( state ) ;
+				m_events.done( state,QStringList() ) ;
 			}
 		}
 		void withData( QProcess::ProcessChannel channel,const QByteArray& data )
 		{
-			auto _withData = [ & ]( const QByteArray& data ){
-
-				m_options.printOutPut( data ) ;
-
-				m_timer->stop() ;
-
-				if( !m_cancelled ){
-
-					if( m_options.listRequested() ){
-
-						m_data += data ;
-					}
-
-					m_logger.add( [ this,&data ]( Logger::Data& e,int id,bool s ){
-
-						m_engine.processData( e,data,id,s ) ;
-					} ) ;
-				}
-			} ;
-
 			auto mode = m_channels.channelMode() ;
 
 			if( mode == QProcess::ProcessChannelMode::MergedChannels ){
 
-				_withData( data ) ;
+				this->withData( data ) ;
 
 			}else if( mode == QProcess::ProcessChannelMode::SeparateChannels ){
 
@@ -1043,48 +1184,96 @@ namespace utility
 
 					if( c == QProcess::ProcessChannel::StandardOutput ){
 
-						_withData( data ) ;
+						this->withData( data ) ;
 					}else{
 						//??
 					}
 				}else{
 					if( c == QProcess::ProcessChannel::StandardError ){
 
-						_withData( data ) ;
+						this->withData( data ) ;
 					}else{
 						m_logger.logError( data ) ;
 					}
 				}
 			}
 		}
-		engines::engine::exeArgs::cmd cmd( const QStringList& args )
+		const engines::engine::exeArgs::cmd& cmd( const QStringList& args )
 		{
-			return { m_engine.exePath(),args } ;
+			m_cmd = { m_engine.exePath(),args } ;
+
+			return m_cmd ;
+		}
+		void setCredentials( const QString& e )
+		{
+			m_credentials = e ;
+		}
+		auto move()
+		{
+			return std::move( *this ) ;
 		}
 	private:
-		const engines::engine& m_engine ;
-		Tlogger m_logger ;
-		Options m_options ;
+		void stopTimer()
+		{
+			if( m_timer ){
+
+				m_timer->stop() ;
+
+				m_timer.release()->deleteLater() ;
+			}
+		}
+		void withData( const QByteArray& data )
+		{
+			m_events.printOutPut( data ) ;
+
+			this->stopTimer() ;
+
+			if( !m_cancelled ){
+
+				if( m_events.addData( data ) ){
+
+					m_logger.add( processData( m_engine,data ) ) ;
+				}
+			}
+		}
+		class processData
+		{
+		public:
+			processData( const engines::engine& engine,const QByteArray& data ) :
+				m_engine( engine ),m_data( data )
+			{
+			}
+			void operator()( Logger::Data& e,int id,bool s ) const
+			{
+				m_engine.processData( e,m_data,id,s ) ;
+			}
+		private:
+			const engines::engine& m_engine ;
+			const QByteArray& m_data ;
+		} ;
+
+		QString m_credentials ;
+		engines::engine::exeArgs::cmd m_cmd ;
+		TLogger m_logger ;
+		Events m_events ;
 		Connection m_conn ;
 		ProcessOutputChannels m_channels ;
+		const engines::engine& m_engine ;
 		std::unique_ptr< QTimer > m_timer ;
-		engines::engine::functions::timer m_timeCounter ;
+		engines::engine::baseEngine::timer m_timeCounter ;
 		QByteArray m_data ;
 		bool m_cancelled ;
 	} ;
 
-	template< typename Connection,
-		  typename Tlogger,
-		  typename Options >
-	auto make_ctx( const engines::engine& engine,
-		       Options options,
-		       Tlogger logger,
+	template< typename Connection,typename Logger,typename Events >
+	auto make_ctx( Events events,
+		       Logger logger,
 		       Connection conn,
 		       utility::ProcessOutputChannels channels )
 	{
-		using ctx = utility::context< Tlogger,Options,Connection > ;
+		using ctx = utility::context< Logger,Events,Connection > ;
 
-		return ctx( engine,channels,std::move( logger ),std::move( options ),std::move( conn ) ) ;
+		return ctx( channels,logger.move(),events.move(),conn.move() ) ;
 	}
 
 	template< typename Ctx >
@@ -1092,28 +1281,9 @@ namespace utility
 	{
 		auto cmd = ctx.cmd( args ) ;
 
-		utils::qprocess::run( cmd.exe(),cmd.args(),[ &cmd,ctx = std::move( ctx ) ]( QProcess& exe )mutable{
+		ctx.setCredentials( credentials ) ;
 
-			ctx.whenCreated( exe,cmd ) ;
-
-			return std::move( ctx ) ;
-
-		},[]( QProcess::ProcessError e,auto& ctx ){
-
-			ctx.withError( e ) ;
-
-		},[ credentials ]( QProcess& exe,auto& ctx ){
-
-			ctx.whenStarted( exe,credentials ) ;
-
-		},[]( int s,QProcess::ExitStatus e,auto& ctx ){
-
-			ctx.whenDone( s,std::move( e ) ) ;
-
-		},[]( QProcess::ProcessChannel channel,const QByteArray& data,auto& ctx ){
-
-			ctx.withData( channel,data ) ;
-		} ) ;
+		utils::qprocess::run( cmd.exe(),cmd.args(),ctx.move() ) ;
 	}
 
 	template< typename List,
@@ -1176,7 +1346,7 @@ namespace utility
 	} ;
 
 	template< typename List >
-	auto make_reverseIterator( List&& l )
+	auto reverse( List&& l )
 	{
 		return reverseIterator< decltype( l ) >( std::forward< List >( l ) ) ;
 	}
@@ -1186,6 +1356,7 @@ namespace utility
 		MediaEntry()
 		{
 		}
+		MediaEntry( const QJsonDocument& doc ) ;
 		MediaEntry( const QString& url ) :
 			m_url( url ),
 			m_json( QByteArray() )
@@ -1197,11 +1368,22 @@ namespace utility
 			m_json( QByteArray() )
 		{
 		}
-
-		MediaEntry( const QByteArray& data ) ;
+		MediaEntry move()
+		{
+			return std::move( *this ) ;
+		}
+		MediaEntry( const engines::engine&,const QByteArray& data ) ;
 
 		QString uiText() const ;
 
+		void setShowFirst()
+		{
+			m_showFirst = true ;
+		}
+		bool showFirst() const
+		{
+			return m_showFirst ;
+		}
 		const QString& thumbnailUrl() const
 		{
 			return m_thumbnailUrl ;
@@ -1275,11 +1457,8 @@ namespace utility
 		{
 			return m_n_entries ;
 		}
-		MediaEntry move() const
-		{
-			return std::move( *const_cast< MediaEntry * >( this ) ) ;
-		}
 	private:
+		void parseJson() ;
 		QString m_thumbnailUrl ;
 		QString m_title ;
 		QString m_uploadDate ;
@@ -1298,6 +1477,32 @@ namespace utility
 		QJsonArray m_formats ;
 		int m_intDuration ;
 		util::Json m_json ;
+
+		bool m_showFirst = false ;
+	} ;
+
+	class networkReply ;
+
+	class networkReplyInvoker : public QObject
+	{
+		Q_OBJECT
+	public:
+		template< typename Object,typename Member >
+		networkReplyInvoker( Object obj,Member member,const networkReply& nr )
+		{
+			connect( this,
+				 &networkReplyInvoker::send,
+				 obj,
+				 member,
+				 Qt::QueuedConnection ) ;
+
+			emit send( nr ) ;
+
+			this->deleteLater() ;
+		}
+	private:
+	signals:
+		void send( const networkReply& ) ;
 	} ;
 
 	class networkReply
@@ -1310,8 +1515,9 @@ namespace utility
 		{
 			this->getData( ctx,reply ) ;
 		}
-		networkReply( QObject * obj,
-			      const char * member,
+		template< typename Object,typename Member >
+		networkReply( Object obj,
+			      Member member,
 			      tableWidget * t,
 			      int id,
 			      utility::MediaEntry m ) :
@@ -1319,10 +1525,11 @@ namespace utility
 			m_mediaEntry( m.move() ),
 			m_table( t )
 		{
-			this->invoke( obj,member ) ;
+			new utility::networkReplyInvoker( obj,member,*this ) ;
 		}
-		networkReply( QObject * obj,
-			      const char * member,
+		template< typename Object,typename Member >
+		networkReply( Object obj,
+			      Member member,
 			      const Context& ctx,
 			      const utils::network::reply& reply,
 			      tableWidget * t,
@@ -1333,7 +1540,8 @@ namespace utility
 			m_table( t )
 		{
 			this->getData( ctx,reply ) ;
-			this->invoke( obj,member ) ;
+
+			new utility::networkReplyInvoker( obj,member,*this ) ;
 		}
 		const QByteArray& data() const
 		{
@@ -1360,7 +1568,6 @@ namespace utility
 			return *m_table ;
 		}
 	private:
-		void invoke( QObject *,const char * ) ;
 		void getData( const Context& ctx,const utils::network::reply& ) ;
 		QByteArray m_data ;
 		int m_id ;
@@ -1372,7 +1579,8 @@ namespace utility
 	void updateFinishedState( const engines::engine& engine,
 				  settings& s,
 				  tableWidget& table,
-				  const FinishedState& f )
+				  const FinishedState& f,
+				  const QStringList& fileNames )
 	{
 		const auto& index = f.index() ;
 		const auto& es = f.exitState() ;
@@ -1391,7 +1599,7 @@ namespace utility
 
 			if( es.success() ){
 
-				engine.runCommandOnDownloadedFile( a,backUpUrl ) ;
+				engine.runCommandOnDownloadedFile( fileNames ) ;
 			}
 
 			if( f.done() ){
@@ -1400,7 +1608,7 @@ namespace utility
 
 				if( !a.isEmpty() ){
 
-					auto args = util::split( a,' ',true ) ;
+					auto args = util::splitPreserveQuotes( a ) ;
 
 					auto exe = args.takeAt( 0 ) ;
 
@@ -1408,78 +1616,6 @@ namespace utility
 				}
 			}
 		}
-	}
-
-	template< typename Opts,typename Functions >
-	class options
-	{
-	public:
-		options( const engines::engine& engine,Opts opts,Functions functions ) :
-			m_engine( engine ),
-			m_opts( std::move( opts ) ),
-			m_functions( std::move( functions ) )
-		{
-		}
-		void done( engines::ProcessExitState e )
-		{
-			m_functions.done( std::move( e ),m_opts ) ;
-		}
-		void listRequested( const engines::ProcessExitState& s,QByteArray e )
-		{
-			m_functions.list( s,std::move( e ) ) ;
-		}
-		bool listRequested()
-		{
-			return m_opts.listRequested ;
-		}
-		void printOutPut( const QByteArray& e )
-		{
-			m_opts.printOutPut( e ) ;
-		}
-		int index()
-		{
-			return m_opts.index ;
-		}
-		void disableAll()
-		{
-			m_functions.disableAll( m_opts ) ;
-		}
-		QString downloadFolder() const
-		{
-			return utility::downloadFolder( m_opts.ctx ) ;
-		}
-		const QProcessEnvironment& processEnvironment() const
-		{
-			return m_engine.processEnvironment() ;
-		}
-	private:
-		const engines::engine& m_engine ;
-		Opts m_opts ;
-		Functions m_functions ;
-	} ;
-
-	template< typename List,typename DisableAll,typename Done >
-	struct Functions
-	{
-		List list ;
-		DisableAll disableAll ;
-		Done done ;
-	} ;
-
-	template< typename List,typename DisableAll,typename Done >
-	Functions< List,DisableAll,Done > OptionsFunctions( List list,DisableAll disableAll,Done done )
-	{
-		return { std::move( list ),std::move( disableAll ),std::move( done ) } ;
-	}
-
-	template< typename DisableAll,typename Done >
-	auto OptionsFunctions( DisableAll disableAll,Done done )
-	{
-		auto aa = []( const engines::ProcessExitState&,QByteArray ){} ;
-
-		using type = Functions< decltype( aa ),DisableAll,Done > ;
-
-		return type{ std::move( aa ),std::move( disableAll ),std::move( done ) } ;
 	}
 }
 

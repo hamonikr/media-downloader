@@ -1,3 +1,9 @@
+media-downloader (4.7.0) noble; urgency=low
+
+  * Update latest upstream
+
+ -- HamoniKR <pkg@hamonikr.org>  Tue, 02 Jul 2024 16:24:38 +0900
+
 media-downloader (3.3.0-1+hamonikr3) noble; urgency=low
 
   * Release for  ubuntu 24.04

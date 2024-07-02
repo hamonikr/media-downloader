@@ -96,10 +96,6 @@
         <translation>Opties</translation>
     </message>
     <message>
-        <source>Show Version Info When Starting</source>
-        <translation>Toon versie info bij opstarten</translation>
-    </message>
-    <message>
         <source>Download</source>
         <translation>Download</translation>
     </message>
@@ -236,10 +232,6 @@
         <translation>home</translation>
     </message>
     <message>
-        <source>Enable Library Tab(May Cause The UI To Freeze For A Very Long TIme If Download Folder Has Too Many Entries)</source>
-        <translation>Tabblad Bibliotheek inschakelen (kan ertoe leiden dat de gebruikersinterface voor een zeer lange tijd vastloopt als de downloadmap te veel items bevat)</translation>
-    </message>
-    <message>
         <source>Update Plugin</source>
         <translation></translation>
     </message>
@@ -254,10 +246,6 @@
     <message>
         <source>Auto Save List Of Not Downloaded Media</source>
         <translation>Lijst met niet-gedownloade media automatisch opslaan</translation>
-    </message>
-    <message>
-        <source>Check For Updates</source>
-        <translation>Controleer op updates</translation>
     </message>
     <message>
         <source>Text Encoding</source>
@@ -316,10 +304,6 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Use System Proxy Configuration(Windows Only)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <source>Use Manually Specified Proxy Configuration</source>
         <translation type="unfinished"></translation>
     </message>
@@ -337,6 +321,38 @@ Example 1: 192.168.93.89:8080
 Exampe 2: ${gateway}:8080</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Use System Proxy Configuration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show Version Info And Autodownload Updates</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show Version Info And Latest Version Info</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show Version Info Only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Do Nothing</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Actions At Startup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>File Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Enable Library Tab</source>
+        <translation>Tabblad Bibliotheek inschakelen</translation>
+    </message>
 </context>
 <context>
     <name>QObject</name>
@@ -351,10 +367,6 @@ Exampe 2: ${gateway}:8080</source>
     <message>
         <source>Date</source>
         <translation>Datum</translation>
-    </message>
-    <message>
-        <source>Text</source>
-        <translation>Tekst</translation>
     </message>
     <message>
         <source>Russian (Russia)</source>
@@ -425,14 +437,6 @@ Exampe 2: ${gateway}:8080</source>
         <translation>2. Ga naar het subtabblad &quot;Algemene opties&quot;.</translation>
     </message>
     <message>
-        <source>Author</source>
-        <translation>Auteur</translation>
-    </message>
-    <message>
-        <source>3. Uncheck &quot;Show Version Info When Starting&quot;.</source>
-        <translation>3. Vink &quot;Versie-info weergeven bij starten&quot; uit.</translation>
-    </message>
-    <message>
         <source>Japanese (Japan)</source>
         <translation>Japanees(Japan)</translation>
     </message>
@@ -467,10 +471,6 @@ Exampe 2: ${gateway}:8080</source>
     <message>
         <source>Download</source>
         <translation></translation>
-    </message>
-    <message>
-        <source>Checking installed version of</source>
-        <translation>Geïnstalleerde versie controleren</translation>
     </message>
     <message>
         <source>Failed to find version information, make sure &quot;%1&quot; is installed and works properly</source>
@@ -721,26 +721,6 @@ Exampe 2: ${gateway}:8080</source>
         <translation>Opgesplitst in hoofdstukken</translation>
     </message>
     <message>
-        <source>Engine Name</source>
-        <translation>Programma naam</translation>
-    </message>
-    <message>
-        <source>Installed Version</source>
-        <translation>Geïnstalleerde versie</translation>
-    </message>
-    <message>
-        <source>Latest Version</source>
-        <translation>Laatste versie</translation>
-    </message>
-    <message>
-        <source>There Is An Update For </source>
-        <translation>Er is een update voor </translation>
-    </message>
-    <message>
-        <source>Update Found</source>
-        <translation>Update gevonden</translation>
-    </message>
-    <message>
         <source>Newest Version Is %1, Updating</source>
         <translation>Nieuwste versie %1, Is aan bijwerken</translation>
     </message>
@@ -836,6 +816,126 @@ Exampe 2: ${gateway}:8080</source>
         <source>Warning: Skipping Clipboard Content</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>Project Page</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Show Folders First</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arrange In Ascending Order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arrange By Date</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arrange By Name</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arrange In Descending Order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Filter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>No Filter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>3. Click &quot;Actions At StartUp&quot; Menu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>4. Select &quot;Do Nothing&quot;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>There Is An Update For %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Newest Version Is: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Failed To Start Executable %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy Url</source>
+        <translation type="unfinished">Kopie URL</translation>
+    </message>
+    <message>
+        <source>Open Url With %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Copy Url %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Open Url %1 With %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Windows&apos; Secure Channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Trouble Ahead, Failed To Delete Folder: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Other Websites</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Extract Audio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Extract Audio As MP3</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Arabic</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Best Available Audio Only+Thumbnail</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Youtube</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Autoupdate Disabled For %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Newest Version Is %1, AutoUpdate Disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Author: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Like Count: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>batchdownloader</name>
@@ -892,12 +992,20 @@ Exampe 2: ${gateway}:8080</source>
         <translation>Toon commentaar</translation>
     </message>
     <message>
-        <source>Copy Url %1</source>
-        <translation>Kopieer URL %1</translation>
-    </message>
-    <message>
         <source>Download Media Part</source>
         <translation>Download media onderdeel</translation>
+    </message>
+    <message>
+        <source>Sort By Date Ascending</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sort By Date Descending</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Sort By Likes</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -929,6 +1037,10 @@ Exampe 2: ${gateway}:8080</source>
     <message>
         <source>Copy</source>
         <translation>Kopieer</translation>
+    </message>
+    <message>
+        <source>Edit</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

@@ -32,47 +32,41 @@
 
 const char * yt_dlp::testYtDlp()
 {
-	return R"R([youtube] Extracting URL: https://www.youtube.com/watch?v=tn2USd5KeVM
+	return R"R(youtube] Extracting URL: https://www.youtube.com/watch?v=tn2USd5KeVM
 [youtube] tn2USd5KeVM: Downloading webpage
+[youtube] tn2USd5KeVM: Downloading ios player API JSON
 [youtube] tn2USd5KeVM: Downloading android player API JSON
+[youtube] tn2USd5KeVM: Downloading m3u8 information
 [info] tn2USd5KeVM: Downloading 1 format(s): 242+250
-[dashsegments] Total fragments: 1
-[download] Destination: For You, I Will-tn2USd5KeVM.f242.webm
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1024","ETA":"801","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"3748.8989290898444","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3072","ETA":"270","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"11100.353549598756","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"7168","ETA":"117","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"25553.916984198353","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"15360","ETA":"55","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"54191.706305212036","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"31744","ETA":"28","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"105082.03807274862","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"64512","ETA":"15","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"186530.45246344642","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"130048","ETA":"9","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"302596.7195118163","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"261120","ETA":"5","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"513690.6226527927","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"523264","ETA":"3","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"759468.0671639751","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"1047552","ETA":"2","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"944726.817633977","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"2096128","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1130690.3381772884","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1050349.8707767602","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"0","total_bytes_estimate":"3006209.0","total_bytes":"NA","speed":"1048710.8298590486","fragment_index":"1","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f242.webm","downloaded_bytes":"3006209","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"3006209","speed":"1045432.6172785787","fragment_index":"NA","fragment_count":"NA"}
-[dashsegments] Total fragments: 1
-[download] Destination: For You, I Will-tn2USd5KeVM.f250.webm
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"1024","ETA":"198","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"4036.8055100230085","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"3072","ETA":"66","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"11936.322350783255","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"7168","ETA":"28","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"27459.17039337285","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"15360","ETA":"13","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"57882.20012434548","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"31744","ETA":"6","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"112194.0950090543","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"64512","ETA":"3","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"193614.70508961147","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"130048","ETA":"2","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"324906.7034416374","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"261120","ETA":"1","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"469521.50453802437","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"523264","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"679335.6383840272","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"798716.483346946","fragment_index":"0","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"0","total_bytes_estimate":"801810.0","total_bytes":"NA","speed":"795310.8810879494","fragment_index":"1","fragment_count":"1"}
-[download] {"filename":"For You, I Will-tn2USd5KeVM.f250.webm","downloaded_bytes":"801810","ETA":"NA","total_bytes_estimate":"NA","total_bytes":"801810","speed":"791098.3168199448","fragment_index":"NA","fragment_count":"NA"}
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
-[Merger] Merging formats into "For You, I Will-tn2USd5KeVM.webm"
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
-Deleting original file For You, I Will-tn2USd5KeVM.f242.webm (pass -k to keep)
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"}
-Deleting original file For You, I Will-tn2USd5KeVM.f242.webm (pass -k to keep)
-[postprocess] {"ETA":"","filename":"For You, I Will-tn2USd5KeVM.webm"})R" ;
+[download] Destination: 16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:1024 ETA:86 total_bytes_estimate:NA total_bytes:3006209 progress.speed:34781.85091065167 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:3072 ETA:33 total_bytes_estimate:NA total_bytes:3006209 progress.speed:89097.34668363113 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:7168 ETA:15 total_bytes_estimate:NA total_bytes:3006209 progress.speed:189275.88640212538 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:15360 ETA:8 total_bytes_estimate:NA total_bytes:3006209 progress.speed:371957.3995981617 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:31744 ETA:4 total_bytes_estimate:NA total_bytes:3006209 progress.speed:652337.2325541516 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:64512 ETA:9 total_bytes_estimate:NA total_bytes:3006209 progress.speed:295201.8918201228 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:130048 ETA:8 total_bytes_estimate:NA total_bytes:3006209 progress.speed:359000.1287306937 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:261120 ETA:5 total_bytes_estimate:NA total_bytes:3006209 progress.speed:479032.6506522084 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:523264 ETA:3 total_bytes_estimate:NA total_bytes:3006209 progress.speed:668734.2472276848 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:1047552 ETA:2 total_bytes_estimate:NA total_bytes:3006209 progress.speed:676620.700437195 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:1732231 ETA:1 total_bytes_estimate:NA total_bytes:3006209 progress.speed:834853.6513007934 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:3006209 ETA:0 total_bytes_estimate:NA total_bytes:3006209 progress.speed:902139.0218883085 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] downloaded_bytes:3006209 ETA:NA total_bytes_estimate:NA total_bytes:3006209 progress.speed:495882.2212164972 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm
+[download] Destination: 16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:1024 ETA:31 total_bytes_estimate:NA total_bytes:801810 progress.speed:25365.37818619924 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:3072 ETA:11 total_bytes_estimate:NA total_bytes:801810 progress.speed:67111.66031917997 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:7168 ETA:5 total_bytes_estimate:NA total_bytes:801810 progress.speed:143245.38467622438 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:15360 ETA:2 total_bytes_estimate:NA total_bytes:801810 progress.speed:278861.3860717578 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:31744 ETA:6 total_bytes_estimate:NA total_bytes:801810 progress.speed:126219.34070617768 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:64512 ETA:5 total_bytes_estimate:NA total_bytes:801810 progress.speed:145522.65862243847 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:130048 ETA:3 total_bytes_estimate:NA total_bytes:801810 progress.speed:189624.4667509348 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:261120 ETA:2 total_bytes_estimate:NA total_bytes:801810 progress.speed:247524.8816082002 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:523264 ETA:0 total_bytes_estimate:NA total_bytes:801810 progress.speed:365075.6637308399 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:801810 ETA:0 total_bytes_estimate:NA total_bytes:801810 progress.speed:477969.5544142013 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[download] downloaded_bytes:801810 ETA:NA total_bytes_estimate:NA total_bytes:801810 progress.speed:219337.62226918363 filename:16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm
+[Merger] Merging formats into "16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.webm"
+Deleting original file 16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f250.webm (pass -k to keep)
+Deleting original file 16 years ago, LeBron James put up one of the greatest playoff performances ever 😤 ｜ NBA on ESPN-tn2USd5KeVM.f242.webm (pass -k to keep))R" ;
 }
 
 const char * yt_dlp::testFfmpeg()
@@ -130,14 +124,61 @@ video:9475kB audio:7554kB subtitle:0kB other streams:0kB global headers:0kB muxi
 [download] 100% of   17.13MiB in 00:00:12 at 1.40MiB/s)R" ;
 }
 
+static QString _OSXBinaryName()
+{
+	return "yt-dlp_macos" ;
+}
+
+static QString _Windows32BitBinaryName()
+{
+	return "yt-dlp_x86.exe" ;
+}
+
+static QString _Windows64BitBinaryName()
+{
+	return "yt-dlp.exe" ;
+}
+
+void yt_dlp::checkIfBinaryExist( const QString& runTimeBinPath,const QString& thirdPartyBinPath )
+{
+	if( utility::platformIsWindows() ){
+
+		auto destPath = runTimeBinPath ;
+
+		if( utility::platformIs32Bit() ){
+
+			destPath += "/" + _Windows32BitBinaryName() ;
+		}else{
+			destPath += "/" + _Windows64BitBinaryName() ;
+		}
+
+		if( !QFile::exists( destPath ) ){
+
+			auto srcPath = thirdPartyBinPath + "/ytdlp/" + _Windows32BitBinaryName() ;
+
+			utility::copyFile( srcPath,destPath ) ;
+		}
+
+	}else if( utility::platformIsOSX() ){
+
+		auto destPath = runTimeBinPath + "/" + _OSXBinaryName() ;
+		auto srcPath = utility::OSX3rdPartyDirPath() + "/" + _OSXBinaryName() ;
+
+		if( !QFile::exists( destPath ) && QFile::exists( srcPath ) ){
+
+			utility::copyFile( srcPath,destPath ) ;
+		}
+	}
+}
+
 static const char * _jsonFullArguments()
 {
-	return R"R({"uploader":%(uploader)j,"id":%(id)j,"thumbnail":%(thumbnail)j,"duration":%(duration)j,"title":%(title)j,"upload_date":%(upload_date)j,"webpage_url":%(webpage_url)j,"formats":%(formats.:.{url,format_id,ext,resolution,filesize,tbr,vbr,abr,asr,container,protocol,vcodec,video_ext,acodec,audio_ext,format_note})j,"n_entries":%(n_entries)j,"playlist_id":%(playlist_id)j,"playlist_title":%(playlist_title)j,"playlist":%(playlist)j,"playlist_count":%(playlist_count)j,"playlist_uploader":%(playlist_uploader)j,"playlist_uploader_id":%(playlist_uploader_id)j})R" ;
+	return R"R({"uploader":%(uploader)j,"id":%(id)j,"thumbnail":%(thumbnail)j,"duration":%(duration)j,"title":%(title)j,"upload_date":%(upload_date)j,"webpage_url":%(webpage_url)j,"formats":%(formats.:.{url,format_id,ext,resolution,filesize,filesize_approx,tbr,vbr,abr,asr,container,protocol,vcodec,video_ext,acodec,audio_ext,format_note})j,"playlist_id":%(playlist_id)j,"playlist_title":%(playlist_title)j,"playlist":%(playlist)j,"playlist_uploader":%(playlist_uploader)j,"playlist_uploader_id":%(playlist_uploader_id)j})R" ;
 }
 
 QStringList yt_dlp::jsonNoFormatsArgumentList()
 {
-	auto a = R"R({"uploader":%(uploader)j,"id":%(id)j,"thumbnail":%(thumbnail)j,"duration":%(duration)j,"title":%(title)j,"upload_date":%(upload_date)j,"webpage_url":%(webpage_url)j,"n_entries":%(n_entries)j,"playlist_id":%(playlist_id)j,"playlist_title":%(playlist_title)j,"playlist":%(playlist)j,"playlist_count":%(playlist_count)j,"playlist_uploader":%(playlist_uploader)j,"playlist_uploader_id":%(playlist_uploader_id)j})R" ;
+	auto a = R"R({"uploader":%(uploader)j,"id":%(id)j,"thumbnail":%(thumbnail)j,"duration":%(duration)j,"title":%(title)j,"upload_date":%(upload_date)j,"webpage_url":%(webpage_url)j,"playlist_id":%(playlist_id)j,"playlist_title":%(playlist_title)j,"playlist":%(playlist)j,"playlist_uploader":%(playlist_uploader)j,"playlist_uploader_id":%(playlist_uploader_id)j})R" ;
 
 	return { "--newline","--print",a } ;
 }
@@ -195,11 +236,16 @@ QJsonObject yt_dlp::init( const QString& name,
 
 			utility::addJsonCmd json( mainObj ) ;
 
+			auto macos = _OSXBinaryName() ;
+
 			json.add( { { "Generic" },{ { "x86","youtube-dl",{ "youtube-dl" } },
 						    { "amd64","youtube-dl",{ "youtube-dl" } } } } ) ;
 
 			json.add( { { "Windows" },{ { "x86","youtube-dl.exe",{ "youtube-dl.exe" } },
 						    { "amd64","youtube-dl.exe",{ "youtube-dl.exe" } } } } ) ;
+
+			json.add( { { "MacOS" },{ { "x86",macos,{ macos } },
+						  { "amd64",macos,{ macos } } } } ) ;
 
 			json.done() ;
 
@@ -224,11 +270,18 @@ QJsonObject yt_dlp::init( const QString& name,
 		}else{
 			utility::addJsonCmd json( mainObj ) ;
 
+			auto x86Name = _Windows32BitBinaryName() ;
+			auto amd64   = _Windows64BitBinaryName() ;
+			auto macos   = _OSXBinaryName() ;
+
 			json.add( { { "Generic" },{ { "x86","yt-dlp",{ "yt-dlp" } },
 						    { "amd64","yt-dlp",{ "yt-dlp" } } } } ) ;
 
-			json.add( { { "Windows" },{ { "x86","yt-dlp_x86.exe",{ "yt-dlp_x86.exe" } },
-						    { "amd64","yt-dlp.exe",{ "yt-dlp.exe" } } } } ) ;
+			json.add( { { "Windows" },{ { "x86",x86Name,{ x86Name } },
+						    { "amd64",amd64,{ amd64 } } } } ) ;
+
+			json.add( { { "MacOS" },{ { "x86",macos,{ macos } },
+						  { "amd64",macos,{ macos } } } } ) ;
 
 			json.done() ;
 
@@ -288,6 +341,8 @@ QJsonObject yt_dlp::init( const QString& name,
 
 			mainObj.insert( "DownloadUrl","https://api.github.com/repos/yt-dlp/yt-dlp/releases/latest" ) ;
 		}
+
+		mainObj.insert( "AutoUpdate",true ) ;
 
 		mainObj.insert( "EncodingArgument","--encoding" ) ;
 
@@ -368,11 +423,15 @@ yt_dlp::yt_dlp( const engines& engines,
 		QJsonObject& obj,
 		Logger& logger,
 		const engines::enginePaths& enginePath,
-		const util::version& version ) :
-	engines::engine::functions( engines.Settings(),engine,engines.processEnvironment() ),
+		const util::version& version,
+		const QString& downloadFolder,
+		bool deleteFilesOnCancel ) :
+	engines::engine::baseEngine( engines.Settings(),engine,engines.processEnvironment() ),
 	m_engine( engine ),
 	m_version( version ),
-	m_likeYtdlp( m_engine.name() != "youtube-dl" )
+	m_likeYtdlp( m_engine.name() != "youtube-dl" ),
+	m_deleteFilesOnCancel( deleteFilesOnCancel ),
+	m_downloadFolder( downloadFolder )
 {
 	Q_UNUSED( m_version )
 
@@ -511,7 +570,7 @@ yt_dlp::~yt_dlp()
 
 static bool _yt_dlp( const engines::engine&,const QByteArray& e )
 {
-	return utils::misc::startsWithAny( e,"[download]","[postprocess]" ) && e.contains( "ETA" ) ;
+	return e.startsWith( "[download]" ) && e.contains( "ETA" ) ;
 }
 
 static bool _youtube_dl( const engines::engine&,const QByteArray& e )
@@ -549,15 +608,89 @@ static bool _shouldNotGetCalled( const engines::engine&,const QByteArray& )
 	return false ;
 }
 
-class ytDlpFilter : public engines::engine::functions::filterOutPut
+class parseTemplateOutPut
+{
+public:
+	static void setTemplate( QStringList& e )
+	{
+		e.append( "--progress-template" ) ;
+		e.append( "download:[download] downloaded_bytes:%(progress.downloaded_bytes)s ETA:%(progress.eta)s total_bytes_estimate:%(progress.total_bytes_estimate)s total_bytes:%(progress.total_bytes)s progress.speed:%(progress.speed)s filename:%(progress.filename)s" ) ;
+	}
+	parseTemplateOutPut( const QByteArray& e )
+	{
+		m_dataDownloaded   = this->findEntry( e,"downloaded_bytes:" ) ;
+		m_eta              = this->findEntry( e,"ETA:" ) ;
+		m_totaSizeEstimate = this->findEntry( e,"total_bytes_estimate:" ) ;
+		m_totalSize        = this->findEntry( e,"total_bytes:" ) ;
+		m_speed            = this->findEntry( e,"speed:" ) ;
+
+		auto m = e.indexOf( "filename" ) ;
+
+		if( m != -1 ){
+
+			m_fileName = e.mid( m + 9 ) ;
+		}
+	}
+	const QByteArray& fileName() const
+	{
+		return m_fileName ;
+	}
+	const QByteArray& dataDownloaded() const
+	{
+		return m_dataDownloaded ;
+	}
+	const QByteArray& totalSizeEstimate() const
+	{
+		return m_totaSizeEstimate ;
+	}
+	const QByteArray& speed() const
+	{
+		return m_speed ;
+	}
+	const QByteArray& ETA() const
+	{
+		return m_eta ;
+	}
+	const QByteArray& totalSize() const
+	{
+		return m_totalSize ;
+	}
+private:
+	QByteArray findEntry( const QByteArray& data,const QByteArray& e )
+	{
+		auto m = data.indexOf( e ) ;
+
+		if( m != -1 ){
+
+			auto s = data.mid( m + e.size() ) ;
+
+			m = s.indexOf( " " ) ;
+
+			if( m != -1 ){
+
+				return s.mid( 0,m ) ;
+			}
+		}
+
+		return "NA" ;
+	}
+	QByteArray m_totalSize ;
+	QByteArray m_eta ;
+	QByteArray m_fileName ;
+	QByteArray m_dataDownloaded ;
+	QByteArray m_totaSizeEstimate ;
+	QByteArray m_speed ;
+};
+
+class ytDlpFilter : public engines::engine::baseEngine::filterOutPut
 {
 public:
 	ytDlpFilter( const engines::engine& engine ) :
 		m_engine( engine )
 	{
 	}
-	engines::engine::functions::filterOutPut::result
-	formatOutput( const engines::engine::functions::filterOutPut::args& args ) const override
+	engines::engine::baseEngine::filterOutPut::result
+	formatOutput( const engines::engine::baseEngine::filterOutPut::args& args ) const override
 	{
 		if( m_function == _yt_dlp ){
 
@@ -574,7 +707,7 @@ public:
 			return { args.outPut,m_engine,m_function } ;
 		}
 	}
-	bool meetCondition( const engines::engine::functions::filterOutPut::args& args ) const override
+	bool meetCondition( const engines::engine::baseEngine::filterOutPut::args& args ) const override
 	{
 		const auto& e = args.outPut ;
 
@@ -607,60 +740,46 @@ public:
 		return m_engine ;
 	}
 private:
-	QByteArray outPutFormat( const engines::engine::functions::filterOutPut::args& args ) const
+	QByteArray outPutFormat( const engines::engine::baseEngine::filterOutPut::args& args ) const
 	{
 		const auto& e = args.outPut ;
 		const auto& locale = args.locale ;
-		auto& s = args.data ;
 
-		if( e.startsWith( "[postprocess]" ) ){
+		parseTemplateOutPut outPut( e ) ;
 
-			auto obj = QJsonDocument::fromJson( e.mid( 14 ) ).object() ;
-
-			s.ytDlpData().setFilePath( obj.value( "filename" ).toString().toUtf8() ) ;
-
-			return {} ;
-		}
-
-		auto obj = QJsonDocument::fromJson( e.mid( 11 ) ).object() ;
-
-		auto downloaded_str = obj.value( "downloaded_bytes" ).toString() ;
-		auto totalbytesEstimate = obj.value( "total_bytes_estimate" ).toString() ;
-		auto eta = obj.value( "ETA" ).toString() ;
-		auto speed = obj.value( "speed" ).toString() ;
-		auto totalBytes = obj.value( "total_bytes" ).toString() ;
+		args.data.ytDlpData().setFilePath( outPut.fileName() ) ;
 
 		QString progress = e.mid( 0,11 ) ;
 
-		if( downloaded_str == "NA" ){
+		if( outPut.dataDownloaded() == "NA" ){
 
 			progress += "NA / " ;
 		}else{
-			auto m = qint64( downloaded_str.toDouble() ) ;
+			auto m = qint64( outPut.dataDownloaded().toDouble() ) ;
 
 			progress += locale.formattedDataSize( m )  + " / " ;
 		}
 
 		double percentage = 0 ;
 
-		if( totalBytes != "NA" ){
+		if( outPut.totalSize() != "NA" ){
 
-			auto mm = totalBytes.toDouble() ;
+			auto mm = outPut.totalSize().toDouble() ;
 
 			if( mm != 0 ){
 
-				percentage = downloaded_str.toDouble() * 100 / mm ;
+				percentage = outPut.dataDownloaded().toDouble() * 100 / mm ;
 			}
 
 			progress += locale.formattedDataSize( qint64( mm ) ) ;
 
-		}else if( totalbytesEstimate != "NA" ){
+		}else if( outPut.totalSizeEstimate() != "NA" ){
 
-			auto mm = totalbytesEstimate.toDouble() ;
+			auto mm = outPut.totalSizeEstimate().toDouble() ;
 
 			if( mm != 0 ){
 
-				percentage = downloaded_str.toDouble() * 100 / mm ;
+				percentage = outPut.dataDownloaded().toDouble() * 100 / mm ;
 			}
 
 			progress += "~" + locale.formattedDataSize( qint64( mm ) ) ;
@@ -675,18 +794,18 @@ private:
 			progress += " (100%)" ;
 		}
 
-		if( speed != "NA" ){
+		if( outPut.speed() != "NA" ){
 
-			auto mm = speed.toDouble() ;
+			auto mm = outPut.speed().toDouble() ;
 
 			progress += " at " + locale.formattedDataSize( qint64( mm ) ) + "/s" ;
 		}
 
-		if( eta == "NA" ){
+		if( outPut.ETA() == "NA" ){
 
 			progress += ", ETA NA" ;
 		}else{
-			progress += ", ETA " + locale.secondsToString( eta.toInt() ) ;
+			progress += ", ETA " + locale.secondsToString( outPut.ETA().toInt() ) ;
 		}
 
 		return progress.toUtf8() ;
@@ -862,18 +981,18 @@ private:
 	mutable bool( *m_function )( const engines::engine&,const QByteArray& ) ;
 } ;
 
-engines::engine::functions::FilterOutPut yt_dlp::filterOutput()
+engines::engine::baseEngine::FilterOutPut yt_dlp::filterOutput()
 {
 	return { util::types::type_identity< ytDlpFilter >(),m_engine } ;
 }
 
-std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QByteArray& e )
+std::vector< engines::engine::baseEngine::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QByteArray& e )
 {
 	const auto& name = m_engine.name() ;
 
 	if( name == "youtube-dl" ){
 
-		return engines::engine::functions::mediaProperties( l,e ) ;
+		return engines::engine::baseEngine::mediaProperties( l,e ) ;
 	}else{
 		QJsonParseError err ;
 
@@ -890,7 +1009,45 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Lo
 	}
 }
 
-std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QJsonArray& array )
+static QString _fileSizeRaw( QJsonObject e )
+{
+	auto m = e.value( "filesize" ).toInt( -1 ) ;
+
+	if( m == -1 ){
+
+		m = e.value( "filesize_approx" ).toInt( -1 ) ;
+
+		if( m == -1 ){
+
+			return "0" ;
+		}else{
+			return QString::number( m ) ;
+		}
+	}else{
+		return QString::number( m ) ;
+	}
+}
+
+static QString _fileSize( Logger::locale& s,QJsonObject e )
+{
+	auto m = e.value( "filesize" ).toInt( -1 ) ;
+
+	if( m == -1 ){
+
+		m = e.value( "filesize_approx" ).toInt( -1 ) ;
+
+		if( m == -1 ){
+
+			return "NA" ;
+		}else{
+			return "~" + s.formattedDataSize( m ) ;
+		}
+	}else{
+		return s.formattedDataSize( m ) ;
+	}
+}
+
+std::vector< engines::engine::baseEngine::mediaInfo > yt_dlp::mediaProperties( Logger& l,const QJsonArray& array )
 {
 	if( array.isEmpty() ){
 
@@ -899,14 +1056,14 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Lo
 
 	if( m_engine.name() == "youtube-dl" ){
 
-		return engines::engine::functions::mediaProperties( l,array ) ;
+		return engines::engine::baseEngine::mediaProperties( l,array ) ;
 	}
 
-	std::vector< engines::engine::functions::mediaInfo > firstToShow ;
-	std::vector< engines::engine::functions::mediaInfo > secondToShow ;
-	std::vector< engines::engine::functions::mediaInfo > thirdtToShow ;
+	std::vector< engines::engine::baseEngine::mediaInfo > firstToShow ;
+	std::vector< engines::engine::baseEngine::mediaInfo > secondToShow ;
+	std::vector< engines::engine::baseEngine::mediaInfo > thirdtToShow ;
 
-	Logger::locale s ;
+	Logger::locale locale ;
 
 	enum class mediaType{ audioOnly,videoOnly,audioVideo,unknown } ;
 
@@ -941,7 +1098,6 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Lo
 		auto ext       = obj.value( "ext" ).toString() ;
 		auto rsn       = obj.value( "resolution" ).toString() ;
 
-		auto fileSize  = s.formattedDataSize( obj.value( "filesize" ).toInt() ) ;
 		auto tbr       = QString::number( obj.value( "tbr" ).toDouble() ) ;
 		auto vbr       = QString::number( obj.value( "vbr" ).toDouble() ) ;
 		auto abr       = QString::number( obj.value( "abr" ).toDouble() ) ;
@@ -995,9 +1151,10 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Lo
 
 		if( container.isEmpty() ){
 
-			s = QString( "Proto: %1, File Size: %2\n" ).arg( proto,fileSize ) ;
+			s = QString( "Proto: %1\n" ).arg( proto ) ;
 		}else{
-			s = QString( "Proto: %1, File Size: %2\ncontainer: %3\n" ).arg( proto,fileSize,container ) ;
+			auto m = QString( "Proto: %1%2\ncontainer: %2\n" ) ;
+			s = m.arg( proto,container ) ;
 		}
 
 		_append( s,"acodec: ",acodec,false ) ;
@@ -1034,15 +1191,18 @@ std::vector< engines::engine::functions::mediaInfo > yt_dlp::mediaProperties( Lo
 
 		QStringList arr{ url } ;
 
+		auto size = _fileSize( locale,obj ) ;
+		auto sizeRaw = _fileSizeRaw( obj ) ;
+
 		if( ext == "mhtml" ){
 
-			firstToShow.emplace_back( arr,id,ext,rsn,s ) ;
+			firstToShow.emplace_back( arr,id,ext,rsn,size,sizeRaw,s ) ;
 
 		}else if( rsn != "audio only" && !rsn.contains( "video only" ) ){
 
-			thirdtToShow.emplace_back( arr,id,ext,rsn,s ) ;
+			thirdtToShow.emplace_back( arr,id,ext,rsn,size,sizeRaw,s ) ;
 		}else{
-			secondToShow.emplace_back( arr,id,ext,rsn,s ) ;
+			secondToShow.emplace_back( arr,id,ext,rsn,size,sizeRaw,s ) ;
 		}
 	}
 
@@ -1142,7 +1302,7 @@ void yt_dlp::setProxySetting( QStringList& e,const QString& s )
 
 void yt_dlp::setTextEncondig( const QString& args,QStringList& opts )
 {
-	const auto& e = engines::engine::functions::Settings().textEncoding() ;
+	const auto& e = engines::engine::baseEngine::Settings().textEncoding() ;
 
 	if( !e.isEmpty() && !args.isEmpty() ){
 
@@ -1151,39 +1311,17 @@ void yt_dlp::setTextEncondig( const QString& args,QStringList& opts )
 	}
 }
 
-engines::engine::functions::DataFilter yt_dlp::Filter( int id )
+engines::engine::baseEngine::DataFilter yt_dlp::Filter( int id )
 {
-	return { util::types::type_identity< yt_dlp::youtube_dlFilter >(),id,m_engine,m_likeYtdlp } ;
-}
-
-void yt_dlp::runCommandOnDownloadedFile( const QString& e,const QString& )
-{
-	auto& settings = engines::engine::functions::Settings() ;
-	auto a = settings.commandOnSuccessfulDownload() ;
-
-	if( !a.isEmpty() && !e.isEmpty() ){
-
-		auto b = settings.downloadFolder() + "/" + util::split( e,'\n',true ).at( 0 ) ;
-
-		if( QFile::exists( b ) ){
-
-			auto args = util::split( a,' ',true ) ;
-
-			args.append( b ) ;
-
-			auto exe = args.takeAt( 0 ) ;
-
-			QProcess::startDetached( exe,args ) ;
-		}
-	}
+	return { util::types::type_identity< yt_dlp::youtube_dlFilter >(),id,m_engine,*this } ;
 }
 
 QString yt_dlp::updateTextOnCompleteDownlod( const QString& uiText,
 					     const QString& bkText,
 					     const QString& dopts,
-					     const engines::engine::functions::finishedState& f )
+					     const engines::engine::baseEngine::finishedState& f )
 {
-	using functions = engines::engine::functions ;
+	using functions = engines::engine::baseEngine ;
 
 	if( f.cancelled() ){
 
@@ -1195,7 +1333,7 @@ QString yt_dlp::updateTextOnCompleteDownlod( const QString& uiText,
 
 		if( uiText.contains( e ) ){
 
-			auto m = engines::engine::functions::updateTextOnCompleteDownlod( bkText,dopts,f ) ;
+			auto m = engines::engine::baseEngine::updateTextOnCompleteDownlod( bkText,dopts,f ) ;
 
 			return m + "\n" + e  ;
 		}
@@ -1204,8 +1342,8 @@ QString yt_dlp::updateTextOnCompleteDownlod( const QString& uiText,
 
 		for( const auto& it : util::split( uiText,'\n',true ) ){
 
-			auto x = engines::engine::functions::postProcessing::processingText() ;
-			auto y = engines::engine::functions::preProcessing::processingText() ;
+			auto x = engines::engine::baseEngine::postProcessing::processingText() ;
+			auto y = engines::engine::baseEngine::preProcessing::processingText() ;
 
 			if( !it.contains( x ) && !it.contains( y ) ){
 
@@ -1213,7 +1351,7 @@ QString yt_dlp::updateTextOnCompleteDownlod( const QString& uiText,
 			}
 		}
 
-		return engines::engine::functions::updateTextOnCompleteDownlod( a.join( "\n" ),dopts,f ) ;
+		return engines::engine::baseEngine::updateTextOnCompleteDownlod( a.join( "\n" ),dopts,f ) ;
 
 	}else if( uiText == "EngineNeedUpdating" ){
 
@@ -1238,12 +1376,12 @@ QString yt_dlp::updateTextOnCompleteDownlod( const QString& uiText,
 
 		return functions::errorString( f,functions::errors::notSupportedUrl,bkText ) ;
 	}else{
-		auto m = engines::engine::functions::updateTextOnCompleteDownlod( uiText,dopts,f ) ;
+		auto m = engines::engine::baseEngine::updateTextOnCompleteDownlod( uiText,dopts,f ) ;
 		return m + "\n" + bkText ;
 	}
 }
 
-void yt_dlp::updateDownLoadCmdOptions( const engines::engine::functions::updateOpts& s )
+void yt_dlp::updateDownLoadCmdOptions( const engines::engine::baseEngine::updateOpts& s,bool e )
 {
 	if( s.userOptions.contains( "--yes-playlist" ) ){
 
@@ -1258,21 +1396,18 @@ void yt_dlp::updateDownLoadCmdOptions( const engines::engine::functions::updateO
 	s.ourOptions.append( "--output-na-placeholder" ) ;
 	s.ourOptions.append( "NA" ) ;
 
-	auto _replace = [ this ]( QStringList& s,QString& txt,const QString& original,const QString& New ){
+	QStringList mm ;
 
-		if( m_likeYtdlp ){
+	auto _add = [ & ]( const QString& txt,const QString& original,const QString& New ){
 
-			if( txt.contains( original ) ){
+		if( txt.contains( original ) ){
 
-				s.append( "--parse-metadata" ) ;
-				s.append( New + ":" + original ) ;
-			}
-		}else{
-			txt.replace( original,New ) ;
+			mm.append( "--parse-metadata" ) ;
+			mm.append( New + ":" + original ) ;
 		}
 	} ;
 
-	for( int m = 0 ; m < s.ourOptions.size() ; m++ ){
+	for( int m = s.ourOptions.size() - 1 ; m > -1 ; m-- ){
 
 		if( s.ourOptions[ m ] == "-o" ){
 
@@ -1283,23 +1418,28 @@ void yt_dlp::updateDownLoadCmdOptions( const engines::engine::functions::updateO
 				auto w = s.uiIndex.toString( true,s.ourOptions ) ;
 				auto ww = s.uiIndex.toString( false,s.ourOptions ) ;
 
-				_replace( s.ourOptions,e,"%(autonumber)s",ww ) ;
-				_replace( s.ourOptions,e,"%(playlist_index)s",w ) ;
-				_replace( s.ourOptions,e,"%(playlist_autonumber)s",w ) ;
-				_replace( s.ourOptions,e,"%(playlist_id)s",s.playlist_id ) ;
-				_replace( s.ourOptions,e,"%(playlist_title)s",s.playlist_title ) ;
-				_replace( s.ourOptions,e,"%(playlist)s",s.playlist ) ;
-				_replace( s.ourOptions,e,"%(playlist_count)s",s.playlist_count ) ;
-				_replace( s.ourOptions,e,"%(playlist_uploader)s",s.playlist_uploader ) ;
-				_replace( s.ourOptions,e,"%(playlist_uploader_id)s",s.playlist_uploader_id ) ;
-				_replace( s.ourOptions,e,"%(n_entries)s",s.n_entries ) ;
-
-				m++ ;
+				_add( e,"%(autonumber)s",ww ) ;
+				_add( e,"%(playlist_index)s",w ) ;
+				_add( e,"%(playlist_autonumber)s",w ) ;
+				_add( e,"%(playlist_id)s",s.playlist_id ) ;
+				_add( e,"%(playlist_title)s",s.playlist_title ) ;
+				_add( e,"%(playlist)s",s.playlist ) ;
+				_add( e,"%(playlist_count)s",s.playlist_count ) ;
+				_add( e,"%(playlist_uploader)s",s.playlist_uploader ) ;
+				_add( e,"%(playlist_uploader_id)s",s.playlist_uploader_id ) ;
+				_add( e,"%(n_entries)s",s.uiIndex.total() ) ;
 			}
+
+			break ;
 		}
 	}
 
-	engines::engine::functions::updateDownLoadCmdOptions( s ) ;
+	if( !mm.isEmpty() ){
+
+		s.ourOptions.append( mm ) ;
+	}
+
+	engines::engine::baseEngine::updateDownLoadCmdOptions( s,e ) ;
 
 	if( !s.ourOptions.contains( "-f" ) && !s.ourOptions.contains( "-S" ) ){
 
@@ -1319,11 +1459,7 @@ void yt_dlp::updateDownLoadCmdOptions( const engines::engine::functions::updateO
 				utility::arguments( s.ourOptions ).removeOptionWithArgument( "--progress-template" ) ;
 			}
 
-			s.ourOptions.append( "--progress-template" ) ;
-			s.ourOptions.append( R"R(download:[download] {"filename":"%(progress.filename)s","downloaded_bytes":"%(progress.downloaded_bytes)s","ETA":"%(progress.eta)s","total_bytes_estimate":"%(progress.total_bytes_estimate)s","total_bytes":"%(progress.total_bytes)s","speed":"%(progress.speed)s","fragment_index":"%(progress.fragment_index)s","fragment_count":"%(progress.fragment_count)s"})R" ) ;
-
-			//s.ourOptions.append( "--progress-template" ) ;
-			//s.ourOptions.append( R"R(postprocess:[postprocess] {"ETA":"","filename":"%(info.filepath)s"})R" ) ;
+			parseTemplateOutPut::setTemplate( s.ourOptions ) ;
 		}
 	}
 }
@@ -1354,22 +1490,29 @@ void yt_dlp::updateCmdOptions( QStringList& e )
 
 yt_dlp::youtube_dlFilter::youtube_dlFilter( int processId,
 					    const engines::engine& engine,
-					    bool likeYtdlp ) :
-	engines::engine::functions::filter( engine,processId ),
-	m_engine( engine )
+					    yt_dlp& p ) :
+	engines::engine::baseEngine::filter( engine,processId ),
+	m_engine( engine ),
+	m_parent( p )
 {
-	Q_UNUSED( likeYtdlp )
 }
 
-const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
+const QByteArray& yt_dlp::youtube_dlFilter::operator()( Logger::Data& s )
 {
-	if( s.lastLineIsProgressLine() ){
+	if( s.lastText() == "[media-downloader] Download Cancelled" ){
+
+		if( m_parent.m_deleteFilesOnCancel ){
+
+			utility::deleteTmpFiles( m_parent.m_downloadFolder,std::move( m_fileNames ) ) ;
+		}
+
+	}else if( s.lastLineIsProgressLine() ){
 
 		const auto& m = s.lastText() ;
 
 		if( m.startsWith( "[download] " ) ){
 
-			m_tmp = m_fileName + "\n" + m.mid( 11 ) ;
+			m_tmp = this->fileName() + "\n" + m.mid( 11 ) ;
 
 		}else if( m_engine.name().contains( "aria2c" ) ){
 
@@ -1377,14 +1520,14 @@ const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
 
 			if( n != -1 ){
 
-				m_tmp = m_fileName + "\n" + m.mid( n + 1 ) ;
+				m_tmp = this->fileName() + "\n" + m.mid( n + 1 ) ;
 			}else{
-				m_tmp = m_fileName + "\n" + m ;
+				m_tmp = this->fileName() + "\n" + m ;
 			}
 
 			aria2c::trimProgressLine( m_tmp ) ;
 		}else{
-			m_tmp = m_fileName + "\n" + m ;
+			m_tmp = this->fileName() + "\n" + m ;
 		}
 
 		return m_tmp ;
@@ -1409,7 +1552,7 @@ const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
 			}
 		}
 
-		if( m_fileName.isEmpty() ){
+		if( m_fileNames.empty() ){
 
 			/*
 			 * Failed to find file name, try again.
@@ -1417,7 +1560,7 @@ const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
 
 			this->parseOutput( m ) ;
 
-			if( m_fileName.isEmpty() ){
+			if( m_fileNames.empty() ){
 
 				const auto& m = s.ytDlpData().filePath() ;
 
@@ -1429,18 +1572,37 @@ const QByteArray& yt_dlp::youtube_dlFilter::operator()( const Logger::Data& s )
 					return m_tmp ;
 				}
 			}else{
-				return m_fileName ;
+				return m_fileNames.back() ;
 			}
 		}else{
-			return m_fileName ;
+			return m_fileNames.back() ;
 		}
 	}
 
-	return this->parseOutput( m ) ;
+	this->setFileName( s.ytDlpData().filePath() ) ;
+
+	const auto& ee = this->parseOutput( m ) ;
+
+	if( !m_fileNames.empty() ){
+
+		s.addFileName( m_fileNames.back() ) ;
+	}
+
+	return ee ;
 }
 
 yt_dlp::youtube_dlFilter::~youtube_dlFilter()
 {
+}
+
+QByteArray yt_dlp::youtube_dlFilter::fileName()
+{
+	if( m_fileNames.empty() ){
+
+		return "" ;
+	}else{
+		return m_fileNames.back() ;
+	}
 }
 
 const QByteArray& yt_dlp::youtube_dlFilter::parseOutput( const Logger::Data::QByteArrayList& data )
@@ -1497,8 +1659,18 @@ const QByteArray& yt_dlp::youtube_dlFilter::parseOutput( const Logger::Data::QBy
 
 void yt_dlp::youtube_dlFilter::setFileName( const QByteArray& fileName )
 {
-	if( m_fileName != fileName ){
+	if( fileName.isEmpty() ){
 
-		m_fileName = fileName ;
+		return ;
 	}
+
+	for( const auto& it : m_fileNames ){
+
+		if( it == fileName ){
+
+			return ;
+		}
+	}
+
+	m_fileNames.emplace_back( fileName ) ;
 }

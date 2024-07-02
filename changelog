@@ -210,9 +210,76 @@ Version 1.2.0(April 1st, 2021)
       - Default to h264 video codec instead of yt-dlp's vp9 when downloading youtute videos.
       - Update Italian translations.
 
-  Version 4.0.0(Unreleased)
+  Version 4.0.0(Novermber 2nd, 2023)
       [Windows]
       - Update bundled version of ffmpeg to version 6.0.
       - Fix a problem that caused the UI to hang when reading clipboard data.
+      - App title bar is now black when using dark theme.
       [All]
       - Respect an option to save not downloaded entries when the apps quits unexpectedly.
+
+  Version 4.1.0(December 1st, 2023)
+      [All]
+      - Various changes and improvements.
+
+  Version 4.2.0(January 2nd, 2024)
+      [Windows]
+      - Fix a bug that caused older version of ffmpeg to be used when user install newer version of MD
+       that uses newer version of ffmpeg without first unistalling older version of MD that uses older
+       version of ffmpeg.
+      [All]
+      - Add ability show entries in the library tab in various orders.
+      - Add ability to filter and sort media list to easily choose which ones to download.
+      - Rework UI options that control checking for updates and autodownloads at startup.
+
+  Version 4.3.0(February 1st, 2024)
+      [Windows]
+      - Automatic updates of Media Downloader can now be configured to track git updates. Look for
+        option named "WindowsUpdateChannel" in the config file and change its value to "git" to start
+        monitoring git channel. Change the value back to "release" to go back to monitoring release channel.
+      [All]
+      - Fix a bug that causes a crash when trying to be clever with certain user provided yt-dlp options.
+
+  Version 4.3.1(February 1st, 2024)
+      - Hot fix release so just repeating changelong for version 4.3.0.
+      [Windows]
+      - Automatic updates of Media Downloader can now be configured to track git updates. Look for
+        option named "WindowsUpdateChannel" in the config file and change its value to "git" to start
+        monitoring git channel. Change the value back to "release" to go back to monitoring release channel.
+      [All]
+      - Fix a bug that causes a crash when trying to be clever with certain user provided yt-dlp options.
+
+  Version 4.4.0(March 3rd, 2024)
+      [Windows]
+     - Fix a bug that caused Media Downloader to not show progress report when file names contained invalid
+       json character.
+      [All]
+     - Add a boolean config only option named  "DeleteFilesOnCanceledDownload" to delete temporary files
+        when download is cancelled.
+     - Add a file size colum in "media options" table to easily show media file sizes.
+     - Now buildable with Qt6. Pass "-DBUILD_WITH_QT6=TRUE" option to cmake to build for Qt6.
+
+  Version 4.5.0(April 1st, 2024)
+      [All]
+     - Support internal downloading and updating svtplay.
+     - "Show media Options" menu now has a context menu with a list of video players you can use for
+        streaming a media instead of downloading it.
+     - Its now possible to select random entries in batch and playlist downloader tabs and batch download
+      only those selected.
+
+     Version 4.6.0(May 3rd, 2024)
+     [Windows]
+     - Update bundled ffmpeg to version 7. Unistall first Media Downloader before updating to this version
+       because some ffmpeg files are named differently causing older files to not be removed.
+      [All]
+     - Add config only for now options to show desktop notification when a download is complete. To get a
+       desktop notification when a download is complete, add option
+       "DesktopNotifyOnDownloadComplete=true" to the config file. To get a desktop notification when all
+       downloads complete, add option "DesktopNotifyOnAllDownloadComplete" to the config file.
+    - Add support for "--playlist-reverse" yt-dlp option. Media Downloader need to simulate yt-dlp playlist options
+      because it manages the playlist itsef.
+
+     Version 4.7.0(May 24, 2024)
+         [All]
+    - Add Arabic translations.
+    - Add support for MacOS.

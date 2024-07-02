@@ -308,6 +308,7 @@ public:
 		{
 			return m_processOutputs.rbegin()->entries().rbegin()->progressLine() ;
 		}
+		QByteArray debugOutPut() const ;
 		QByteArray join( const QByteArray& joiner ) const ;
 		QByteArray toLine() const
 		{
@@ -336,6 +337,16 @@ public:
 			void removeLast()
 			{
 				m_entries->pop_back() ;
+			}
+			QByteArray takeLast()
+			{
+				auto m = this->lastText() ;
+				this->removeLast() ;
+				return m ;
+			}
+			size_t size() const
+			{
+				return m_entries->size() ;
 			}
 			operator bool() const
 			{
@@ -455,6 +466,17 @@ public:
 		{
 			return m_svtData ;
 		}
+		void addFileName( const QString& e )
+		{
+			if( !m_fileNames.contains( e ) ){
+
+				m_fileNames.append( e ) ;
+			}
+		}
+		const QStringList& fileNames() const
+		{
+			return m_fileNames ;
+		}
 	private:
 		bool doneDownloadingText( const QByteArray& data ) ;
 		template< typename Function >
@@ -497,6 +519,7 @@ public:
 		bool m_mainLogger ;
 		YtDlpData m_ytDlpData ;
 		SvtData m_svtData ;
+		QStringList m_fileNames ;
 	} ;
 
 	Logger( QPlainTextEdit&,QWidget * parent,settings& ) ;
@@ -514,6 +537,10 @@ public:
 
 		this->update() ;
 	}
+	void addRawData( int id,const QByteArray& data )
+	{
+		m_debugProcessOutPuts.add( id,data ) ;
+	}
 	void logError( const QByteArray& data,int id )
 	{
 		auto function = []( const QByteArray& ){ return false ; } ;
@@ -528,8 +555,13 @@ public:
 	}
 	void setMaxProcessLog( int s ) ;
 	void showLogWindow() ;
+	void showDebugLogWindow() ;
 	void reTranslateLogWindow() ;
 	void updateView( bool e ) ;
+	const QStringList& fileNames()
+	{
+		return m_processOutPuts.fileNames() ;
+	}
 	Logger( const Logger& ) = delete ;
 	Logger& operator=( const Logger& ) = delete ;
 	Logger( Logger&& ) = delete ;
@@ -539,6 +571,7 @@ private:
 	logWindow m_logWindow ;
 	QPlainTextEdit& m_textEdit ;
 	Logger::Data m_processOutPuts ;
+	Logger::Data m_debugProcessOutPuts ;
 	bool m_updateView = false ;
 	settings& m_settings ;
 	int m_maxProcessLog ;
@@ -578,6 +611,14 @@ public:
 	{
 		m_logger->add( function,m_id ) ;
 	}
+	LoggerWrapper move()
+	{
+		return std::move( *this ) ;
+	}
+	const QStringList& fileNames()
+	{
+		return m_logger->fileNames() ;
+	}
 private:
 	Logger * m_logger ;
 	int m_id ;
@@ -595,6 +636,10 @@ public:
 		m_localLogger( false ),
 		m_id( id )
 	{
+	}
+	loggerBatchDownloader< F,U,E > move()
+	{
+		return std::move( *this ) ;
 	}
 	void add( const QString& e )
 	{
@@ -634,6 +679,10 @@ public:
 		m_error( data ) ;
 		m_logger.logError( data,m_id ) ;
 	}
+	const QStringList& fileNames()
+	{
+		return m_localLogger.fileNames() ;
+	}
 private:
 	void update()
 	{
@@ -671,6 +720,10 @@ public:
 		m_error( std::move( error ) )
 	{
 	}
+	loggerPlaylistDownloader< AddToTable,TableWidget,Error > move()
+	{
+		return std::move( *this ) ;
+	}
 	void add( const QString& e )
 	{
 		this->add( e.toUtf8() ) ;
@@ -707,6 +760,10 @@ public:
 
 			m_logger.logError( data,m_id ) ;
 		}
+	}
+	const QStringList& fileNames()
+	{
+		return m_localLogger.fileNames() ;
 	}
 private:
 	TableWidget& m_table ;

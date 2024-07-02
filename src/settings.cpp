@@ -28,6 +28,9 @@
 #include <QFile>
 
 #include <cstring>
+#include <algorithm>
+
+#include <QDesktopServices>
 
 static QString _configPath()
 {
@@ -88,22 +91,12 @@ bool settings::monitorClipboardUrl( settings::tabName tabName )
 {
 	auto m = _monitorClipboadUrl( tabName ) ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,false ) ;
-	}
-
-	return m_settings.value( m ).toBool() ;
+	return this->getOption( m,false ) ;
 }
 
 QString settings::themeName()
 {
-	if( !m_settings.contains( "ThemeName" ) ){
-
-		m_settings.setValue( "ThemeName",themes().unTranslatedAt( 0 ) ) ;
-	}
-
-	return m_settings.value( "ThemeName" ).toString() ;
+	return this->getOption( "ThemeName",themes().unTranslatedAt( 0 ) ) ;
 }
 
 void settings::setThemeName( const QString& e )
@@ -133,12 +126,7 @@ QStringList settings::getOptionsHistory( settings::tabName e )
 {
 	auto m = _getOptionsHistoryTabName( e ) ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,QStringList() ) ;
-	}
-
-	return m_settings.value( m ).toStringList() ;
+	return this->getOption( m,QStringList() ) ;
 }
 
 void settings::clearOptionsHistory( settings::tabName e )
@@ -147,7 +135,7 @@ void settings::clearOptionsHistory( settings::tabName e )
 }
 
 static void _addToHistory( QSettings& settings,
-			   QStringList&& history,
+			   QStringList& history,
 			   const QString& key,
 			   const QString& input,
 			   int max )
@@ -169,11 +157,10 @@ void settings::addToplaylistRangeHistory( const QString& e )
 {
 	if( this->saveHistory() ){
 
-		_addToHistory( m_settings,
-			       this->playlistRangeHistory(),
-			       "PlaylistRangeHistory",
-			       e,
-			       this->historySize() ) ;
+		auto a = this->playlistRangeHistory() ;
+		auto b = "PlaylistRangeHistory" ;
+
+		_addToHistory( m_settings,a,b,e,this->historySize() ) ;
 	}
 }
 
@@ -181,17 +168,18 @@ void settings::addOptionsHistory( const QString& e,settings::tabName s )
 {
 	if( this->saveHistory() ){
 
-		_addToHistory( m_settings,
-			       this->getOptionsHistory( s ),
-			       _getOptionsHistoryTabName( s ),
-			       e,
-			       this->historySize() ) ;
+		auto a = this->getOptionsHistory( s ) ;
+		auto b = _getOptionsHistoryTabName( s ) ;
+
+		_addToHistory( m_settings,a,b,e,this->historySize() ) ;
 	}
 }
 
 void settings::clearPlaylistRangeHistory()
 {
-	m_settings.setValue( "PlaylistRangeHistory",QStringList{ "--break-on-existing" } ) ;
+	QStringList s{ "--break-on-existing" } ;
+
+	m_settings.setValue( "PlaylistRangeHistory",s ) ;
 }
 
 void settings::clearPlaylistUrlHistory()
@@ -206,62 +194,42 @@ void settings::setAutoSavePlaylistOnExit( bool e )
 
 bool settings::autoSavePlaylistOnExit()
 {
-	if( !m_settings.contains( "AutoSavePlaylistOnExit" ) ){
-
-		m_settings.setValue( "AutoSavePlaylistOnExit",true ) ;
-	}
-
-	return m_settings.value( "AutoSavePlaylistOnExit" ).toBool() ;
+	return this->getOption( "AutoSavePlaylistOnExit",true ) ;
 }
 
 bool settings::useInternalArchiveFile()
 {
-	if( !m_settings.contains( "UseInternalArchiveFile" ) ){
-
-		m_settings.setValue( "UseInternalArchiveFile",true ) ;
-	}
-
-	return m_settings.value( "UseInternalArchiveFile" ).toBool() ;
-}
-
-bool settings::checkForUpdates()
-{
-	if( !m_settings.contains( "CheckForUpdates" ) ){
-
-		m_settings.setValue( "CheckForUpdates",utility::platformIsWindows() ) ;
-	}
-
-	return m_settings.value( "CheckForUpdates" ).toBool() ;
+	return this->getOption( "UseInternalArchiveFile",true ) ;
 }
 
 bool settings::enableLibraryTab()
 {
-	if( !m_settings.contains( "EnableLibraryTab" ) ){
-
-		m_settings.setValue( "EnableLibraryTab",false ) ;
-	}
-
-	return m_settings.value( "EnableLibraryTab" ).toBool() ;
+	return this->getOption( "EnableLibraryTab",false ) ;
 }
 
 bool settings::checkForEnginesUpdates()
 {
-	if( !m_settings.contains( "CheckForEnginesUpdates" ) ){
-
-		m_settings.setValue( "CheckForEnginesUpdates",true ) ;
-	}
-
-	return m_settings.value( "CheckForEnginesUpdates" ).toBool() ;
+	return this->getOption( "CheckForEnginesUpdates",true ) ;
 }
 
 bool settings::autoHideDownloadWhenCompleted()
 {
-	if( !m_settings.contains( "AutoHideDownloadWhenCompleted" ) ){
+	return this->getOption( "AutoHideDownloadWhenCompleted",false ) ;
+}
 
-		m_settings.setValue( "AutoHideDownloadWhenCompleted",false ) ;
-	}
+bool settings::deleteFilesOnCanceledDownload()
+{
+	return this->getOption( "DeleteFilesOnCanceledDownload",false ) ;
+}
 
-	return m_settings.value( "AutoHideDownloadWhenCompleted" ).toBool() ;
+bool settings::autoSetDefaultEngineAndOptions()
+{
+	return this->getOption( "AutoSetDefaultEngineAndOptions",false ) ;
+}
+
+qint64 settings::timeOutWaitingForClipboardData()
+{
+	return this->getOption( "TimeOutWaitingForClipboardData",30000 ) ;
 }
 
 void settings::setAutoHideDownloadWhenCompleted( bool e )
@@ -269,14 +237,9 @@ void settings::setAutoHideDownloadWhenCompleted( bool e )
 	m_settings.setValue( "AutoHideDownloadWhenCompleted",e ) ;
 }
 
-int settings::textAlignment()
+Qt::Alignment settings::textAlignment()
 {
-	if( !m_settings.contains( "MainTableTextAlignment" ) ){
-
-		m_settings.setValue( "MainTableTextAlignment","center" ) ;
-	}
-
-	auto m = m_settings.value( "MainTableTextAlignment" ).toString() ;
+	auto m = this->getOption( "MainTableTextAlignment",QString( "center" ) ) ;
 
 	if( m == "center" ){
 
@@ -312,32 +275,19 @@ void settings::setUseInternalArchiveFile( bool e )
 
 int settings::networkTimeOut()
 {
-	if( !m_settings.contains( "NetworkTimeOutInSeconds" ) ){
-
-		m_settings.setValue( "NetworkTimeOutInSeconds",30 ) ;
-	}
-
-	return m_settings.value( "NetworkTimeOutInSeconds" ).toInt() * 1000 ;
+	return this->getOption( "NetworkTimeOutInSeconds",30 )  * 1000 ;
 }
 
 QStringList settings::playlistRangeHistory()
 {
-	if( !m_settings.contains( "PlaylistRangeHistory" ) ){
+	QStringList s{ "--break-on-existing" } ;
 
-		m_settings.setValue( "PlaylistRangeHistory",QStringList{ "--break-on-existing" } ) ;
-	}
-
-	return m_settings.value( "PlaylistRangeHistory" ).toStringList() ;
+	return this->getOption( "PlaylistRangeHistory",s ) ;
 }
 
 QStringList settings::playlistUrlHistory()
 {
-	if( !m_settings.contains( "PlaylistUrlHistory" ) ){
-
-		m_settings.setValue( "PlaylistUrlHistory",QStringList() ) ;
-	}
-
-	return m_settings.value( "PlaylistUrlHistory" ).toStringList() ;
+	return this->getOption( "PlaylistUrlHistory",QStringList() ) ;
 }
 
 void settings::setPlaylistRangeHistoryLastUsed( const QString& e )
@@ -347,12 +297,31 @@ void settings::setPlaylistRangeHistoryLastUsed( const QString& e )
 
 QString settings::playlistRangeHistoryLastUsed()
 {
-	if( !m_settings.contains( "playlistRangeHistoryLastUsed" ) ){
+	QString s( "--break-on-existing" ) ;
 
-		m_settings.setValue( "playlistRangeHistoryLastUsed",QString( "--break-on-existing" ) ) ;
+	return this->getOption( "playlistRangeHistoryLastUsed",s ) ;
+}
+
+QString settings::gitHubDownloadUrl()
+{
+	QString channel = [](){
+
+		if( utility::runningGitVersion() ){
+
+			return "git" ;
+		}else{
+			return "release" ;
+		}
+	}() ;
+
+	auto m = this->getOption( "WindowsUpdateChannel",channel ) ;
+
+	if( m.compare( "release",Qt::CaseInsensitive ) == 0 ){
+
+		return "https://api.github.com/repos/mhogomchungu/media-downloader/releases/latest" ;
+	}else{
+		return "https://api.github.com/repos/mhogomchungu/media-downloader-git/releases/latest" ;
 	}
-
-	return m_settings.value( "playlistRangeHistoryLastUsed" ).toString() ;
 }
 
 static std::unique_ptr< QSettings > _set_config( const QString& path )
@@ -402,30 +371,27 @@ static std::unique_ptr< QSettings > _init( const QString& dataPath,bool portable
 	}
 }
 
-settings::settings(const utility::cliArguments& args) :
-    m_options(args),
-    m_settingsP(_init(m_options.dataPath(), m_options.portableVersion())),
-    m_settings(*m_settingsP)
+settings::settings( const utility::cliArguments& args ) :
+	m_options( args ),
+	m_settingsP( _init( m_options.dataPath(),m_options.portableVersion() ) ),
+	m_settings( *m_settingsP )
+
 {
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
-    m_EnableHighDpiScaling = true;
-    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
+#if QT_VERSION >= QT_VERSION_CHECK( 5,6,0 )
+
+	m_EnableHighDpiScaling = true ;
+	#if QT_VERSION < QT_VERSION_CHECK( 6,0,0 )
+		QApplication::setAttribute( Qt::AA_EnableHighDpiScaling ) ;
+	#endif
 #else
-    m_EnableHighDpiScaling = false;
+	m_EnableHighDpiScaling = false ;
 #endif
-    auto m = this->highDpiScalingFactor();
+	auto m = this->highDpiScalingFactor() ;
 
-    if (m != "1.0") {
-        qputenv("QT_SCALE_FACTOR", m);
-    }
+	if( m != "1.0" ){
 
-    // Ensure default language is set to Korean if not set
-    if (!m_settings.contains("Language")) {
-        m_settings.setValue("Language", "ko_KR");
-        qDebug() << "Default language set to Korean (ko_KR)";
-    } else {
-        qDebug() << "Language loaded from settings:" << m_settings.value("Language").toString();
-    }
+		qputenv( "QT_SCALE_FACTOR",m ) ;
+	}
 
     // Check and apply dark theme if set in GTK settings
     if (isGtkDarkTheme()) {
@@ -448,32 +414,19 @@ void settings::setTabNumber( int s )
 
 int settings::tabNumber()
 {
-	if( !m_settings.contains( "TabNumber" ) ){
-
-		m_settings.setValue( "TabNumber",0 ) ;
-	}
-
-	return m_settings.value( "TabNumber" ).toInt() ;
+	return this->getOption( "TabNumber",0 ) ;
 }
 
 int settings::maxLoggerProcesses()
 {
-	if( !m_settings.contains( "MaxLoggerProcesses" ) ){
-
-		m_settings.setValue( "MaxLoggerProcesses",0 ) ;
-	}
-
-	return m_settings.value( "MaxLoggerProcesses" ).toInt() ;
+	return this->getOption( "MaxLoggerProcesses",0 ) ;
 }
 
 size_t settings::maxConcurrentDownloads()
 {
-	if( !m_settings.contains( "MaxConcurrentDownloads" ) ){
+	auto m = this->getOption( "MaxConcurrentDownloads",4 ) ;
 
-		m_settings.setValue( "MaxConcurrentDownloads",4 ) ;
-	}
-
-	return static_cast< size_t >( m_settings.value( "MaxConcurrentDownloads" ).toInt() ) ;
+	return static_cast< size_t >( m ) ;
 }
 
 const QString& settings::windowsOnly3rdPartyBinPath()
@@ -512,11 +465,11 @@ static QString _downloadFolder( QSettings& settings,const QString& defaultPath,L
 {
 	auto mediaDownloaderCWD = utility::stringConstants::mediaDownloaderCWD() ;
 
-	auto mediaDownloaderDefaultDownloadPath = utility::stringConstants::mediaDownloaderDefaultDownloadPath() ;
+	auto mm = utility::stringConstants::mediaDownloaderDefaultDownloadPath() ;
 
 	if( !settings.contains( "DownloadFolder" ) ){
 
-		settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
+		settings.setValue( "DownloadFolder",mm ) ;
 	}
 
 	auto m = settings.value( "DownloadFolder" ).toString() ;
@@ -525,9 +478,9 @@ static QString _downloadFolder( QSettings& settings,const QString& defaultPath,L
 
 		m.replace( mediaDownloaderCWD,QDir::currentPath() ) ;
 
-	}else if( m.startsWith( mediaDownloaderDefaultDownloadPath ) ){
+	}else if( m.startsWith( mm ) ){
 
-		m.replace( mediaDownloaderDefaultDownloadPath,defaultPath ) ;
+		m.replace( mm,defaultPath ) ;
 	}
 
 	if( QFile::exists( m ) ){
@@ -547,7 +500,7 @@ static QString _downloadFolder( QSettings& settings,const QString& defaultPath,L
 			logger->add( s,id ) ;
 		}
 
-		settings.setValue( "DownloadFolder",mediaDownloaderDefaultDownloadPath ) ;
+		settings.setValue( "DownloadFolder",mm ) ;
 
 		QDir().mkpath( defaultPath ) ;
 
@@ -584,12 +537,7 @@ QString settings::downloadFolder( Logger& logger )
 
 bool settings::showTrayIcon()
 {
-	if( !m_settings.contains( "ShowTrayIcon" ) ){
-
-		m_settings.setValue( "ShowTrayIcon",false ) ;
-	}
-
-	return m_settings.value( "ShowTrayIcon" ).toBool() ;
+	return this->getOption( "ShowTrayIcon",false ) ;
 }
 
 void settings::setshowTrayIcon( bool e )
@@ -599,44 +547,44 @@ void settings::setshowTrayIcon( bool e )
 
 bool settings::autoDownload()
 {
-	if( !m_settings.contains( "AutoDownload" ) ){
-
-		m_settings.setValue( "AutoDownload",true ) ;
-	}
-
-	return m_settings.value( "AutoDownload" ).toBool() ;
+	return this->getOption( "AutoDownload",false ) ;
 }
 
-bool settings::showVersionInfoWhenStarting()
+bool settings::downloadOptionsAsLast()
 {
-	if( !m_settings.contains( "ShowVersionInfoWhenStarting" ) ){
+	return this->getOption( "DownloadOptionsAsLast",false ) ;
+}
 
-		m_settings.setValue( "ShowVersionInfoWhenStarting",true ) ;
-	}
+bool settings::autoDownloadWhenAddedInBatchDownloader()
+{
+	return this->getOption( "AutoDownloadWhenAddedInBatchDownloader",false ) ;
+}
 
-	return m_settings.value( "ShowVersionInfoWhenStarting" ).toBool() ;
+bool settings::showVersionInfoAndAutoDownloadUpdates()
+{
+	return this->getOption( "ShowVersionInfoAndAutoDownloadUpdates",true ) ;
+}
+
+bool settings::showLocalAndLatestVersionInformation()
+{
+	return this->getOption( "ShowLocalAndLatestVersionInformation",false ) ;
+}
+
+bool settings::showLocalVersionInformationOnly()
+{
+	return this->getOption( "ShowLocalVersionInformationOnly",false ) ;
 }
 
 bool settings::concurrentDownloading()
 {
-	if( !m_settings.contains( "ConcurrentDownloading" ) ){
-
-		m_settings.setValue( "ConcurrentDownloading",true ) ;
-	}
-
-	return m_settings.value( "ConcurrentDownloading" ).toBool() ;
+	return this->getOption( "ConcurrentDownloading",true ) ;
 }
 
 QString settings::cookieFilePath( const QString& engineName )
 {
 	auto m = "CookieFilePath_" + engineName ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,QString() ) ;
-	}
-
-	return m_settings.value( m ).toString() ;
+	return this->getOption( m,QString() ) ;
 }
 
 void settings::setCookieFilePath( const QString& engineName,const QString& cookieFilePath )
@@ -646,43 +594,7 @@ void settings::setCookieFilePath( const QString& engineName,const QString& cooki
 
 void settings::setTheme( QApplication& app,const QString& themeBasePath )
 {
-	themes ths( this->themeName(),themeBasePath ) ;
-
-	if( !QFile::exists( themeBasePath ) ){
-
-		QDir().mkpath( themeBasePath ) ;
-
-		auto defaultThemePath = ths.defaultthemeFullPath() ;
-
-		if( !QFile::exists( defaultThemePath ) ){
-
-			QFile f( defaultThemePath ) ;
-
-			if( f.open( QIODevice::WriteOnly ) ){
-
-				f.write( QJsonDocument( ths.defaultTheme() ).toJson( QJsonDocument::Indented ) ) ;
-			}
-		}
-	}
-
-	if( ths.usingThemes() ){
-
-		QFile f( ths.themeFullPath() ) ;
-
-		if( !f.open( QIODevice::ReadOnly ) ){
-
-			ths.setDefaultTheme( app ) ;
-		}else{
-			auto obj = QJsonDocument::fromJson( f.readAll() ).object() ;
-
-			if( obj.isEmpty() ){
-
-				return ths.setDefaultTheme( app ) ;
-			}
-
-			ths.setTheme( app,obj ) ;
-		}
-	}
+	themes( this->themeName(),themeBasePath ).set( app ) ;
 }
 
 void settings::setUseSystemProvidedVersionIfAvailable( bool e )
@@ -697,42 +609,22 @@ void settings::setShowMetaDataInBatchDownloader( bool e )
 
 bool settings::showMetaDataInBatchDownloader()
 {
-	if( !m_settings.contains( "ShowMetaDataInBatchDownloader" ) ){
-
-		m_settings.setValue( "ShowMetaDataInBatchDownloader",true ) ;
-	}
-
-	return m_settings.value( "ShowMetaDataInBatchDownloader" ).toBool() ;
+	return this->getOption( "ShowMetaDataInBatchDownloader",true ) ;
 }
 
 bool settings::saveHistory()
 {
-	if( !m_settings.contains( "SaveHistory" ) ){
-
-		m_settings.setValue( "SaveHistory",true ) ;
-	}
-
-	return m_settings.value( "SaveHistory" ).toBool() ;
+	return this->getOption( "SaveHistory",true ) ;
 }
 
 bool settings::playlistDownloaderSaveHistory()
 {
-	if( !m_settings.contains( "PlaylistDownloaderSaveHistory" ) ){
-
-		m_settings.setValue( "PlaylistDownloaderSaveHistory",true ) ;
-	}
-
-	return m_settings.value( "PlaylistDownloaderSaveHistory" ).toBool() ;
+	return this->getOption( "PlaylistDownloaderSaveHistory",true ) ;
 }
 
 bool settings::singleInstance()
 {
-	if( !m_settings.contains( "SingleInstance" ) ){
-
-		m_settings.setValue( "SingleInstance",true ) ;
-	}
-
-	return m_settings.value( "SingleInstance" ).toBool() ;
+	return this->getOption( "SingleInstance",true ) ;
 }
 
 void settings::setPlaylistDownloaderSaveHistory( bool e )
@@ -742,22 +634,12 @@ void settings::setPlaylistDownloaderSaveHistory( bool e )
 
 int settings::stringTruncationSize()
 {
-	if( !m_settings.contains( "StringTruncationSize" ) ){
-
-		m_settings.setValue( "StringTruncationSize",100 ) ;
-	}
-
-	return m_settings.value( "StringTruncationSize" ).toInt() ;
+	return this->getOption( "StringTruncationSize",100 ) ;
 }
 
 int settings::historySize()
 {
-	if( !m_settings.contains( "HistorySize" ) ){
-
-		m_settings.setValue( "HistorySize",10 ) ;
-	}
-
-	return m_settings.value( "HistorySize" ).toInt() ;
+	return this->getOption( "HistorySize",10 ) ;
 }
 
 static QString _thumbnailTabName( const QString& s, settings::tabName e )
@@ -778,29 +660,101 @@ int settings::thumbnailWidth( settings::tabName s )
 {
 	auto m = _thumbnailTabName( "ThumbnailWidth",s ) ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,128 ) ;
-	}
-
-	return m_settings.value( m ).toInt() ;
+	return this->getOption( m,128 ) ;
 }
 
 int settings::thumbnailHeight( settings::tabName s )
 {
 	auto m = _thumbnailTabName( "ThumbnailHeight",s ) ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,72 ) ;
-	}
-
-	return m_settings.value( m ).toInt() ;
+	return this->getOption( m,72 ) ;
 }
 
-void settings::setShowVersionInfoWhenStarting( bool e )
+int settings::desktopNotificationTimeOut()
 {
-	m_settings.setValue( "ShowVersionInfoWhenStarting",e ) ;
+	return this->getOption( "DesktopNotificationTimeOut",10000 ) ;
+}
+
+void settings::setOpenWith( const QString& e )
+{
+	m_settings.setValue( "OpenWith",e ) ;
+}
+
+settings::mediaPlayer settings::openWith( Logger& logger )
+{	
+	static auto s = this->openWith() ;
+
+	return { s,logger } ;
+}
+
+std::vector< settings::mediaPlayer::PlayerOpts > settings::openWith()
+{
+	std::vector< settings::mediaPlayer::PlayerOpts > ss ;
+
+	for( auto& it : utility::getMediaPlayers() ){
+
+		ss.emplace_back( std::move( it.exePath ),std::move( it.name ) ) ;
+	}
+
+	auto mm = this->getOption( "OpenWith",QString() ) ;
+
+	if( mm.isEmpty() ){
+
+		return ss ;
+	}
+
+	auto m = util::split( mm,":" ) ;
+
+	if( m.size() < 2 ){
+
+		return ss ;
+	}
+
+	auto name = m[ 0 ] ;
+
+	using pl = settings::mediaPlayer::PlayerOpts ;
+
+	auto it = std::find_if( ss.begin(),ss.end(),[ & ]( const pl& p ){
+
+		return QString::compare( p.name,name,Qt::CaseInsensitive ) == 0 ;
+	} ) ;
+
+	if( it == ss.end() ){
+
+		if( utility::platformIsWindows() ){
+
+			auto mm = util::join( m,1,":" ) ;
+
+			if( QFile::exists( mm ) ){
+
+				ss.insert( ss.begin(),{ mm,name } ) ;
+			}
+		}else{
+			mm = QStandardPaths::findExecutable( util::join( m,1,":" ) ) ;
+
+			if( !mm.isEmpty() ){
+
+				ss.insert( ss.begin(),{ mm,name } ) ;
+			}
+		}
+	}
+
+	return ss ;
+}
+
+void settings::setShowLocalVersionInformationOnly( bool e )
+{
+	m_settings.setValue( "ShowLocalVersionInformationOnly",e ) ;
+}
+
+void settings::setShowLocalAndLatestVersionInformation( bool e )
+{
+	m_settings.setValue( "ShowLocalAndLatestVersionInformation",e ) ;
+}
+
+void settings::setShowVersionInfoAndAutoDownloadUpdates( bool e )
+{
+	m_settings.setValue( "ShowVersionInfoAndAutoDownloadUpdates",e ) ;
 }
 
 void settings::setHighDpiScalingFactor( const QString& m )
@@ -810,12 +764,7 @@ void settings::setHighDpiScalingFactor( const QString& m )
 
 QString settings::textEncoding()
 {
-	if( !m_settings.contains( "YtDlpTextEncoding" ) ){
-
-		m_settings.setValue( "YtDlpTextEncoding",QString() ) ;
-	}
-
-	return m_settings.value( "YtDlpTextEncoding" ).toString() ;
+	return this->getOption( "YtDlpTextEncoding",QString() ) ;
 }
 
 void settings::setTextEncoding( const QString& e )
@@ -830,14 +779,9 @@ void settings::setlibraryDownloadFolder( const QString& e )
 
 QString settings::libraryDownloadFolder()
 {
-	if( !m_settings.contains( "LibraryDownloadFolder" ) ){
+	auto m = QDir::fromNativeSeparators( this->downloadFolder() ) ;
 
-		auto m = QDir::fromNativeSeparators( this->downloadFolder() ) ;
-
-		m_settings.setValue( "LibraryDownloadFolder",m ) ;
-	}
-
-	return m_settings.value( "LibraryDownloadFolder" ).toString() ;
+	return this->getOption( "LibraryDownloadFolder",m ) ;
 }
 
 static QString _getDefaultEngineName( settings::tabName e )
@@ -867,22 +811,12 @@ QString settings::defaultEngine( settings::tabName n,const QString& engineName )
 {
 	auto m = _getDefaultEngineName( n ) ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,engineName ) ;
-	}
-
-	return m_settings.value( m ).toString() ;
+	return this->getOption( m,engineName ) ;
 }
 
 QByteArray settings::highDpiScalingFactor()
 {
-	if( !m_settings.contains( "EnabledHighDpiScalingFactor" ) ){
-
-		m_settings.setValue( "EnabledHighDpiScalingFactor",QByteArray( "1.0" ) ) ;
-	}
-
-	return m_settings.value( "EnabledHighDpiScalingFactor" ).toByteArray() ;
+	return this->getOption( "EnabledHighDpiScalingFactor",QByteArray( "1.0" ) ) ;
 }
 
 QPixmap settings::defaultVideoThumbnailIcon( settings::tabName m )
@@ -891,6 +825,56 @@ QPixmap settings::defaultVideoThumbnailIcon( settings::tabName m )
 	auto height = this->thumbnailHeight( m ) ;
 
 	return QIcon( ":/video" ).pixmap( width,height ) ;
+}
+
+void settings::setDesktopNotifyOnDownloadComplete( bool e )
+{
+	m_settings.setValue( "DesktopNotifyOnDownloadComplete",e ) ;
+}
+
+void settings::setDesktopNotifyOnAllDownloadComplete( bool e )
+{
+	m_settings.setValue( "DesktopNotifyOnAllDownloadComplete",e ) ;
+}
+
+bool settings::desktopNotifyOnDownloadComplete()
+{
+	return this->getOption( "DesktopNotifyOnDownloadComplete",false ) ;
+}
+
+bool settings::desktopNotifyOnAllDownloadComplete()
+{
+	return this->getOption( "DesktopNotifyOnAllDownloadComplete",false ) ;
+}
+
+void settings::setLibraryShowFolderFirst( bool e )
+{
+	m_settings.setValue( "LibraryShowFolderFirst",e ) ;
+}
+
+void settings::setLibraryArrangeAscending( bool e )
+{
+	m_settings.setValue( "LibraryArrangeAscending",e ) ;
+}
+
+void settings::setLibraryArrangeByDate( bool e )
+{
+	m_settings.setValue( "LibraryArrangeByDate",e ) ;
+}
+
+bool settings::libraryShowFolderFirst()
+{
+	return this->getOption( "LibraryShowFolderFirst",true ) ;
+}
+
+bool settings::libraryArrangeAscending()
+{
+	return this->getOption( "LibraryArrangeAscending",true ) ;
+}
+
+bool settings::libraryArrangeByDate()
+{
+	return this->getOption( "LibraryArrangeByDate",true ) ;
 }
 
 bool settings::enabledHighDpiScaling()
@@ -935,24 +919,35 @@ const QString& settings::configPaths()
 	return m_options.dataPath() ;
 }
 
-QString settings::commandOnSuccessfulDownload()
+void settings::runCommandOnSuccessfulDownload( const QString& s,const QString& df,const QStringList& e )
 {
-	if( !m_settings.contains( "CommandOnSuccessfulDownload" ) ){
+	auto m = this->getOption( "CommandOnSuccessfulDownload",QString() ) ;
 
-		m_settings.setValue( "CommandOnSuccessfulDownload",QString() ) ;
+	if( !m.isEmpty() && !e.isEmpty() ){
+
+		auto args = util::splitPreserveQuotes( m ) ;
+
+		auto exe = args.at( 0 ) ;
+
+		args.replace( 0,s ) ;
+
+		for( const auto& it : e ){
+
+			auto m = df + it ;
+
+			if( QFile::exists( m ) ){
+
+				args.append( m ) ;
+			}
+		}
+
+		QProcess::startDetached( exe,args ) ;
 	}
-
-	return m_settings.value( "CommandOnSuccessfulDownload" ).toString() ;
 }
 
 QString settings::commandWhenAllFinished()
 {
-	if( !m_settings.contains( "CommandWhenAllFinished" ) ){
-
-		m_settings.setValue( "CommandWhenAllFinished",QString() ) ;
-	}
-
-	return m_settings.value( "CommandWhenAllFinished" ).toString() ;
+	return this->getOption( "CommandWhenAllFinished",QString() ) ;
 }
 
 static QString _getTabOption( const QString& s,settings::tabName e )
@@ -977,12 +972,7 @@ QString settings::lastUsedOption( const QString& m,settings::tabName e )
 {
 	auto s = _getTabOption( m,e ) ;
 
-	if( !m_settings.contains( s ) ){
-
-		m_settings.setValue( s,QString() ) ;
-	}
-
-	return m_settings.value( s ).toString() ;
+	return this->getOption( s,QString() ) ;
 }
 
 void settings::setLastUsedOption( const QString& m,const QString& e,settings::tabName s )
@@ -997,14 +987,14 @@ QString settings::localizationLanguagePath()
 		return m_options.windowsOnlyExePath() + "/translations" ;
 	}
 
+	if( utility::platformIsOSX() ){
+
+		return utility::OSXtranslationFilesPath() ;
+	}
+	
 	if( !m_settings.contains( "TranslationsPath" ) ){
 
-		if( utility::platformIsOSX() ){
-
-			m_settings.setValue( "TranslationsPath",TRANSLATION_PATH ) ;
-		}else{
-			m_settings.setValue( "TranslationsPath",TRANSLATION_PATH ) ;
-		}
+		m_settings.setValue( "TranslationsPath",TRANSLATION_PATH ) ;
 	}
 
 	return m_settings.value( "TranslationsPath" ).toString() ;
@@ -1024,22 +1014,12 @@ QString settings::windowsDimensions( const QString& window )
 {
 	auto m = "WindowDimensions_" + window ;
 
-	if( !m_settings.contains( m ) ){
-
-		m_settings.setValue( m,QString() ) ;
-	}
-
-	return m_settings.value( m ).toString() ;
+	return this->getOption( m,QString() ) ;
 }
 
 QString settings::localizationLanguage()
 {
-	if( !m_settings.contains( "Language" ) ){
-
-		m_settings.setValue( "Language","en_US" ) ;
-	}
-
-	return m_settings.value( "Language" ).toString() ;
+	return this->getOption( "Language",QString( "en_US" ) ) ;
 }
 
 bool settings::portableVersion()
@@ -1061,7 +1041,12 @@ settings::options::options( const utility::cliArguments& args )
 
 			m_portableVersion = args.portable() ;
 
-			m_exe3PartyBinPath = args.originalPath() + "/3rdParty" ;
+			m_exe3PartyBinPath = m_exePath + "/3rdParty" ;
+
+			if( !QFile::exists( m_exe3PartyBinPath ) ){
+
+				m_exe3PartyBinPath = args.originalPath() + "/3rdParty" ;
+			}
 
 			const auto& m = args.originalVersion() ;
 			const auto& mm = utility::runningVersionOfMediaDownloader() ;
@@ -1158,4 +1143,33 @@ settings::proxySettings::type settings::proxySettings::types() const
 QByteArray settings::proxySettings::proxyAddress() const
 {
 	return m_settings.value( "ProxySettingsCustomSource" ).toByteArray() ;
+}
+
+settings::mediaPlayer::mediaPlayer( const std::vector< settings::mediaPlayer::PlayerOpts >& s,Logger& logger ) :
+	m_playerOpts( s ),
+	m_logger( logger )
+{
+}
+
+void settings::mediaPlayer::action::logError() const
+{
+	auto id = utility::sequentialID() ;
+
+	auto bar = utility::barLine() ;
+
+	auto m = QObject::tr( "Failed To Start Executable %1" ) ;
+
+	m_logger.add( bar,id ) ;
+
+	m_logger.add( m.arg( m_playerOpts.name ),id ) ;
+
+	m_logger.add( bar,id ) ;
+}
+
+void settings::mediaPlayer::action::operator()() const
+{
+	if( !QProcess::startDetached( m_playerOpts.exePath,{ m_url } ) ){
+
+		this->logError() ;
+	}
 }

@@ -37,13 +37,16 @@ public:
 	configure( const Context& ) ;
 	void init_done() ;
 	void enableAll() ;
+	void textAlignmentChanged( Qt::LayoutDirection ) ;
 	void disableAll() ;
 	void resetMenu() ;
 	void exiting() ;
 	void retranslateUi() ;
+	void setUpdateMenu() ;
 	void downloadFromGitHub( const engines::Iterator& ) ;
 	void tabEntered() ;
 	void tabExited() ;
+	void setVisibilityEditConfigFeature( bool ) ;
 	void updateEnginesList( const QStringList& e ) ;
 	QString engineDefaultDownloadOptions( const QString& ) ;
 	template< typename Function >
@@ -85,6 +88,7 @@ public:
 		const QString& uiName ;
 		const QString& options ;
 		const QString& website ;
+		QString websiteTranslated ;
 		QString uiNameTranslated ;
 	} ;
 	template< typename Function >
@@ -146,12 +150,13 @@ private:
 		downloadDefaultOptions( const Context&,const QString& ) ;
 		void save() ;
 		bool isEmpty( const QString& ) ;
+		void replace( const QString& engineName,const QString& oldOptions,const QString& newOptions ) ;
 		QJsonObject addOpt( const QString&,const QString& engineName,const QString& options ) ;
 		QJsonObject add( const QString& url,const QString& opts,const QString& engineName ) ;
 		QJsonObject add( const configure::downloadDefaultOptions::opts& ) ;
 		void remove( const QJsonObject& ) ;
 		void removeAll( const QString& ) ;
-		QJsonObject setAsDefault( const QJsonObject& ) ;
+		void setAsDefault( const QJsonObject& ) ;
 
 		template< typename Function,
 			  typename std::enable_if<std::is_same<util::types::result_of<Function,const configure::downloadDefaultOptions::optsEngines&,QJsonObject>,bool>::value,int >::type = 0 >
@@ -267,7 +272,7 @@ private:
 	void setEngineOptions( const QString&,engineOptions ) ;
 	void savePresetOptions() ;
 	void showOptions() ;
-	void populateOptionsTable( const util::result_ref< const engines::engine& >& ) ;
+	void populateOptionsTable( const engines::engine&,int = -1 ) ;
 	void updateProxySettings( settings::proxySettings::Type ) ;
 	const Context& m_ctx ;
 	settings& m_settings ;
@@ -276,9 +281,30 @@ private:
 	tabManager& m_tabManager ;
 	engines& m_engines ;
 
-	tableMiniWidget< QString > m_tablePresetOptions ;
-	tableMiniWidget< QJsonObject > m_tableUrlToDefaultEngine ;
-	tableMiniWidget< QJsonObject > m_tableDefaultDownloadOptions ;
+	class String
+	{
+	public:
+		String()
+		{
+		}
+		String( QString e ) : m_string( std::move( e ) )
+		{
+		}
+		const QString& value() const
+		{
+			return m_string ;
+		}
+		QString& value()
+		{
+			return m_string ;
+		}
+	private:
+		QString m_string ;
+	};
+
+	tableMiniWidget< String,3 > m_tablePresetOptions ;
+	tableMiniWidget< QJsonObject,2 > m_tableUrlToDefaultEngine ;
+	tableMiniWidget< QJsonObject,2 > m_tableDefaultDownloadOptions ;
 	QMenu m_menu ;
 	presetOptions m_presetOptions ;
 	downloadDefaultOptions m_downloadDefaultOptions ;

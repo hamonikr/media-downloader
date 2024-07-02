@@ -60,6 +60,10 @@ public:
 	{
 		return *m_table ;
 	}
+	PlNetworkData move()
+	{
+		return std::move( *this ) ;
+	}
 private:
 	QByteArray m_networkData ;
 	QString m_errorString ;
@@ -83,18 +87,40 @@ public:
 	void tabEntered() ;
 	void tabExited() ;
 	void exiting() ;
+	void saveData() ;
+	void textAlignmentChanged( Qt::LayoutDirection ) ;
 	void gotEvent( const QJsonObject& ) ;
 	void updateEnginesList( const QStringList& ) ;
 	void clipboardData( const QString& ) ;
-private slots:
-	void networkData( utility::networkReply ) ;
-	void addTextToUi( const QByteArray&,int ) ;
-	void reportFinishedStatus( const reportFinished& ) ;
 private:
+signals:
+	void addTextToUiSignal( const QByteArray&,int ) ;
+	void reportFinishedStatusSignal( const reportFinished&,const QStringList& ) ;
+private:
+	void reportFinishedStatus( const reportFinished&,const QStringList& ) ;
+	void networkData( const utility::networkReply& ) ;
+	void addTextToUi( const QByteArray&,int ) ;
+
 	enum class size{ small,large,toggle } ;
 	void resizeTable( playlistdownloader::size ) ;
 	QString defaultEngineName() ;
 	const engines::engine& defaultEngine() ;
+
+	void customContextMenuRequested() ;
+	void plSubscription() ;
+
+	struct networkCtx
+	{
+		utility::MediaEntry media ;
+		int id ;
+		tableWidget& table ;
+		networkCtx move()
+		{
+			return std::move( *this ) ;
+		}
+	} ;
+
+	void networkResult( networkCtx,const utils::network::reply& ) ;
 
 	void download() ;	
 	void download( const engines::engine&,downloadManager::index ) ;
@@ -111,12 +137,11 @@ private:
 	QWidget& m_mainWindow ;
 	tabManager& m_tabManager ;
 	tableWidget m_table ;
-	tableMiniWidget< int > m_subscriptionTable ;
+	tableMiniWidget< int,2 > m_subscriptionTable ;
 	bool m_gettingPlaylist = false ;
 	bool m_showThumbnails ;
 	bool m_autoDownload ;
 	bool m_stoppedOnExisting ;
-	bool m_stillProcessingJsonOutput ;
 	bool m_dataReceived ;
 
 	int m_networkRunning = 0 ;
@@ -128,7 +153,46 @@ private:
 
 	QPixmap m_defaultVideoThumbnailIcon ;
 
-	class customOptions ;
+	class customOptions
+	{
+	public:
+		customOptions( QStringList&& opts,
+			       const QString& downloadArchivePath,
+			       const engines::engine& engine,
+			       const Context& ctx ) ;
+		const QStringList& options() const
+		{
+			return m_options ;
+		}
+		int maxMediaLength() const
+		{
+			return engines::engine::baseEngine::timer::toSeconds( m_maxMediaLength ) ;
+		}
+		int minMediaLength() const
+		{
+			return engines::engine::baseEngine::timer::toSeconds( m_minMediaLength ) ;
+		}
+		bool contains( const QString& e ) const ;
+		bool breakOnExisting() const
+		{
+			return m_breakOnExisting ;
+		}
+		bool skipOnExisting() const
+		{
+			return m_skipOnExisting ;
+		}
+		customOptions move()
+		{
+			return std::move( *this ) ;
+		}
+	private:
+		bool m_breakOnExisting = false ;
+		bool m_skipOnExisting = false ;
+		QStringList m_options ;
+		QString m_maxMediaLength ;
+		QString m_minMediaLength ;
+		QByteArray m_archiveFileData ;
+	};
 
 	bool parseJson( const playlistdownloader::customOptions&,
 			tableWidget& table,
@@ -136,24 +200,10 @@ private:
 
 	void showEntry( tableWidget& table,tableWidget::entry e ) ;
 
-	struct opts
-	{
-		const Context& ctx ;
-		utility::printOutPut& printOutPut ;
-		bool listRequested ;
-		int index ;
-	} ;
-
-	template< typename Functions >
-	auto make_options( const engines::engine& engine,playlistdownloader::opts opts,Functions f )
-	{
-		return utility::options< playlistdownloader::opts,Functions >( engine,std::move( opts ),std::move( f ) ) ;
-	}
-
 	class subscription
 	{
 	public:
-		subscription( const Context&,tableMiniWidget< int >&,QWidget& ) ;
+		subscription( const Context&,tableMiniWidget< int,2 >&,QWidget& ) ;
 		void add( const QString& uiName,const QString& url,const QString& Opts ) ;
 		void remove( int ) ;
 		void setVisible( bool ) ;
@@ -176,12 +226,12 @@ private:
 			QString url ;
 			QString getListOptions ;
 		};
-		std::vector< subscription::entry > entries() ;
+		utility::vector< subscription::entry > entries() ;
 	private:
 		void save() ;
 		QString m_path ;
 		QString m_archivePath ;
-		tableMiniWidget< int >& m_table ;
+		tableMiniWidget< int,2 >& m_table ;
 		QWidget& m_ui ;
 		QJsonArray m_array ;
 	};
@@ -214,16 +264,49 @@ private:
 		QString m_txt ;
 		QString m_progress ;
 		qint64 m_time ;
-		engines::engine::functions::timer m_timer ;
+		engines::engine::baseEngine::timer m_timer ;
 	} ;
 
 	banner m_banner ;
 
+	class stdError
+	{
+	public:
+		stdError( playlistdownloader::banner& banner ) : m_banner( banner )
+		{
+		}
+		bool operator()( const QByteArray& e ) ;
+		stdError move()
+		{
+			return std::move( *this ) ;
+		}
+	private:
+		playlistdownloader::banner& m_banner ;
+	} ;
+
+	class stdOut
+	{
+	public:
+		stdOut( playlistdownloader& p,customOptions o,const engines::engine& e ) :
+			m_parent( p ),m_engine( e ),m_customOptions( o.move() )
+		{
+		}
+		void operator()( tableWidget& table,Logger::Data& data ) ;
+		stdOut move()
+		{
+			return std::move( *this ) ;
+		}
+	private:
+		playlistdownloader& m_parent ;
+		const engines::engine& m_engine ;
+		playlistdownloader::customOptions m_customOptions ;
+	} ;
+
 	class listIterator
 	{
 	public:
-		listIterator( std::vector< playlistdownloader::subscription::entry >&& s ) :
-			m_list( std::move( s ) )
+		listIterator( utility::vector< playlistdownloader::subscription::entry > s ) :
+			m_list( s.move() )
 		{
 		}
 		listIterator( const QString& s )
@@ -257,8 +340,8 @@ private:
 			return std::move( *this ) ;
 		}
 	private:
-		std::vector< playlistdownloader::subscription::entry > m_list ;
-	};
+		utility::vector< playlistdownloader::subscription::entry > m_list ;
+	} ;
 
 	void getListing( playlistdownloader::listIterator,const engines::engine& ) ;
 	void getList( playlistdownloader::listIterator,const engines::engine& ) ;
@@ -266,6 +349,6 @@ private:
 
 	QByteArray m_jsonEndMarker = "0xdeadbeef>>MediaDownloaderEndMarker<<0xdeadbeef" ;
 	subscription m_subscription ;
-};
+} ;
 
 #endif
