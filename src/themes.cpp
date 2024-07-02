@@ -18,6 +18,8 @@
  */
 
 #include "themes.h"
+#include <QProcess>
+#include <QDebug>
 
 themes::themes( const QString& themeName,const QString& themePath )  :
 	m_theme( themeName ),
@@ -569,4 +571,18 @@ int themes::indexAt( const QString& e,const QStringList& s ) const
 	}
 
 	return 0 ;
+}
+
+bool isGtkDarkTheme()
+{
+    QProcess process;
+    QStringList arguments;
+    arguments << "get" << "org.gnome.desktop.interface" << "gtk-theme";
+    process.start("gsettings", arguments);
+    process.waitForFinished();
+    QString output = process.readAllStandardOutput().trimmed();
+    
+    qDebug() << "Current GTK theme from gsettings:" << output;
+    
+    return output.contains("dark", Qt::CaseInsensitive);
 }

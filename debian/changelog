@@ -1,3 +1,11 @@
+media-downloader (3.3.0-1+hamonikr3) noble; urgency=low
+
+  * Release for  ubuntu 24.04
+   - Auto detect language
+   - Auto detect dark theme
+
+ -- HamoniKR <pkg@hamonikr.org>  Tue, 02 Jul 2024 14:36:49 +0900
+
 media-downloader (3.3.0-1+hamonikr2) kumkang; urgency=low
 
   * Apply latest upstream
@@ -11,104 +19,3 @@ media-downloader (3.3.0-1+hamonikr1) kumkang; urgency=low
    - Used poedit.com
 
  -- HamoniKR <pkg@hamonikr.org>  Sun, 22 Oct 2023 15:26:11 +0900
-
-media-downloader (3.3.0-1) UNRELEASED; urgency=low
-
-  * version number update by debtransform
-
- -- debtransform <build@opensuse.org>  Tue, 01 Aug 2023 08:36:06 +0000
-
-media-downloader (1.0.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- Initial release.
-
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Sat, 30 Jan 2021 16:38:48 +0000
-
-media-downloader (1.1.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [ALL]
-        - Add polish translations.
-        [Linux]
-        - Add support for downloading media using wget in addition to youtube-dl.
-        [Windows]
-        - The "Cancel" button now works as expected.
-        - Add ability to automatically download youtube-dl binary on first run and a button
-          in the configuration tab to update it on demand.
-
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Mon, 01 March 2021 16:38:48 +0000
- 
-media-downloader (1.2.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [All]
-        - Add json based plugin system to make it possible for users to use their preffered
-        backends to download media.
-
-        [Windows]
-        - Bundle ffmpeg.
-
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Mon, 01 April 2021 16:38:48 +0000
- 
-media-downloader (1.3.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [All]
-        - Add simplified chinese translations.
-        - Add Spanish translations.
-        - Add an option to do batch downloads concurrently.
-     -- [Windows]
-        - Add a portable version(A self contained version that keeps everything in the application folder).
-     -- [Linux]
-        - Add an option to prefer system executables over private media downloader executables.
-
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Sat, 01 May 2021 16:38:48 +0000
- 
- media-downloader (1.4.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [All]
-        - Add dark themes support.
-        - Add Turkish translations.
-        - Update translations.
-        - Make each tab control its own default engine.
-        - Add a tab in a configure tab that allow changing of default downloading options for each engine.
-        - Add a library tab that allows management of downloaded media from within the app.
-        - Make it possible to launch a media by double clicking its entry in the batch tab,playlist tab and library tab.
-        - Add support for gallery-dl extension(https://github.com/mikf/gallery-dl).
-     -- [Windows]
-        - Update bundled OpenSSL to version 1.1.1j.
-        
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Tue, 01 June 2021 16:38:48 +0000
- 
- media-downloader (1.4.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [All]
-        - Add dark themes support.
-        - Add Turkish translations.
-        - Update translations.
-        - Make each tab control its own default engine.
-        - Add a tab in a configure tab that allow changing of default downloading options for each engine.
-        - Add a library tab that allows management of downloaded media from within the app.
-        - Make it possible to launch a media by double clicking its entry in the batch tab,playlist tab and library tab.
-        - Add support for gallery-dl extension(https://github.com/mikf/gallery-dl).
-     -- [Windows]
-        - Update bundled OpenSSL to version 1.1.1j.
-        
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Tue, 01 June 2021 16:38:48 +0000
-
- media-downloader (2.7.0-1) UNRELEASED; urgency=low
-  [Mhogo Mchungu]
-  * New Features
-     -- [All]
-        - Show thumbnails in the playlist downloader tab and in the batch downloader tab. An option has to be set in the
-          configure tab to enable thumbnails to show up in the batch downloader tab because  fetching thumbnails
-        is a slow process.
-        - Make it possible to start downloading or cancel an ongoing download at an individual entry in the batch downloader
-          or playlist downloader tab.
-        - Make it possible to set downloading option per entry in the batch downloader or playlist downloader that overrides
-          global options that are set in the "Enter Options" field.
-  
- -- Mhogo Mchungu <mhogomchungu@gmail.com>  Thu, 01 July 2021 16:38:48 +0000

@@ -402,25 +402,38 @@ static std::unique_ptr< QSettings > _init( const QString& dataPath,bool portable
 	}
 }
 
-settings::settings( const utility::cliArguments& args ) :
-	m_options( args ),
-	m_settingsP( _init( m_options.dataPath(),m_options.portableVersion() ) ),
-	m_settings( *m_settingsP )
-
+settings::settings(const utility::cliArguments& args) :
+    m_options(args),
+    m_settingsP(_init(m_options.dataPath(), m_options.portableVersion())),
+    m_settings(*m_settingsP)
 {
-#if QT_VERSION >= QT_VERSION_CHECK( 5,6,0 )
-
-	m_EnableHighDpiScaling = true ;
-	QApplication::setAttribute( Qt::AA_EnableHighDpiScaling ) ;
+#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+    m_EnableHighDpiScaling = true;
+    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
 #else
-	m_EnableHighDpiScaling = false ;
+    m_EnableHighDpiScaling = false;
 #endif
-	auto m = this->highDpiScalingFactor() ;
+    auto m = this->highDpiScalingFactor();
 
-	if( m != "1.0" ){
+    if (m != "1.0") {
+        qputenv("QT_SCALE_FACTOR", m);
+    }
 
-		qputenv( "QT_SCALE_FACTOR",m ) ;
-	}
+    // Ensure default language is set to Korean if not set
+    if (!m_settings.contains("Language")) {
+        m_settings.setValue("Language", "ko_KR");
+        qDebug() << "Default language set to Korean (ko_KR)";
+    } else {
+        qDebug() << "Language loaded from settings:" << m_settings.value("Language").toString();
+    }
+
+    // Check and apply dark theme if set in GTK settings
+    if (isGtkDarkTheme()) {
+        setThemeName("Dark");
+        qDebug() << "System is using dark theme, applying dark theme";
+    } else {
+        qDebug() << "System is not using dark theme";
+    }
 }
 
 QSettings& settings::bk()

@@ -105,6 +105,8 @@ int main( int argc,char * argv[] )
 
 	utils::app::appInfo< myApp,myApp::args > m( { mqApp,settings,paths,cargs },spath,mqApp,json ) ;
 
+	qDebug() << "Current language:" << settings.localizationLanguage(); // Debug output to check language
+
 	if( cargs.contains( "-s" ) || !settings.singleInstance() ){
 
 		return utils::app::runMultiInstances( std::move( m ) ) ;

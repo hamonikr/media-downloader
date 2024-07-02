@@ -72,4 +72,7 @@ private:
 				       { "Dark",QObject::tr( "Dark" ) } } ;
 } ;
 
+// isGtkDarkTheme 함수 선언 추가
+bool isGtkDarkTheme();
+
 #endif
